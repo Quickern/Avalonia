@@ -11,6 +11,12 @@ namespace Avalonia.Controls.Primitives
 {
     public class OverlayPopupHost : ContentControl, IPopupHost, IInteractive, IManagedPopupPositionerPopup
     {
+        /// <summary>
+        /// Defines the <see cref="Transform"/> property.
+        /// </summary>
+        public static readonly StyledProperty<Transform> TransformProperty =
+            PopupRoot.TransformProperty.AddOwner<OverlayPopupHost>();
+
         private readonly OverlayLayer _overlayLayer;
         private PopupPositionerParameters _positionerParameters = new PopupPositionerParameters();
         private ManagedPopupPositioner _positioner;
@@ -29,7 +35,13 @@ namespace Avalonia.Controls.Primitives
         }
 
         public IVisual HostedVisualTreeRoot => null;
-        
+
+        public Transform Transform
+        {
+            get => GetValue(TransformProperty);
+            set => SetValue(TransformProperty, value);
+        }
+
         /// <inheritdoc/>
         IInteractive IInteractive.InteractiveParent => Parent;
 

@@ -472,7 +472,12 @@ namespace Avalonia.Controls.Primitives.PopupPositioning
                 }
 
                 var bounds = new Rect(default, target.Bounds.Size);
-                var anchorRect = rect ?? bounds;
+                var anchorRect = rect?.Intersect(bounds) ?? bounds;
+                var topLeft = anchorRect.TopLeft.Transform(matrix.Value);
+                var topRight = anchorRect.TopRight.Transform(matrix.Value);
+                var bottomLeft = anchorRect.BottomLeft.Transform(matrix.Value);
+                var bottomRight = anchorRect.BottomRight.Transform(matrix.Value);
+
                 positionerParameters.AnchorRectangle = anchorRect.Intersect(bounds).TransformToAABB(matrix.Value);
 
                 if (placement == PlacementMode.Right)
@@ -484,6 +489,7 @@ namespace Avalonia.Controls.Primitives.PopupPositioning
                 {
                     positionerParameters.Anchor = PopupAnchor.BottomLeft;
                     positionerParameters.Gravity = PopupGravity.BottomRight;
+                    positionerParameters.AnchorRectangle = new Rect(topLeft, new Point(topRight.X, bottomLeft.Y));
                 }
                 else if (placement == PlacementMode.Left)
                 {

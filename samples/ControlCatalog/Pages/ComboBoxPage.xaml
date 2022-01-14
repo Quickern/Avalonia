@@ -71,6 +71,20 @@
           <sys:Exception /> 
         </DataValidationErrors.Error>
       </ComboBox>
+
+      <ComboBox SelectedIndex="0">
+        <ComboBox.RenderTransform>
+          <TransformGroup>
+            <ScaleTransform ScaleX="2" ScaleY="2"/>
+            <RotateTransform Angle="45"/>
+          </TransformGroup>
+        </ComboBox.RenderTransform>
+        <ComboBoxItem>Transform</ComboBoxItem>
+        <ComboBoxItem>Item 1</ComboBoxItem>
+        <ComboBoxItem>Item 2</ComboBoxItem>
+        <ComboBoxItem>Item 3</ComboBoxItem>
+        <ComboBoxItem>Item 4</ComboBoxItem>
+      </ComboBox>
     </WrapPanel>
 
   </StackPanel>

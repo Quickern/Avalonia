@@ -2,6 +2,7 @@ using System;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 
 namespace Avalonia.Controls.Primitives
@@ -26,6 +27,11 @@ namespace Avalonia.Controls.Primitives
         /// Gets the presenter from the control's template.
         /// </summary>
         IContentPresenter Presenter { get; }
+
+        /// <summary>
+        /// Gets or sets a transform that will be applied to the popup.
+        /// </summary>
+        Transform Transform { get; set; }
 
         /// <summary>
         /// Gets the root of the visual tree in the case where the popup is presented using a

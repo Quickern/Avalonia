@@ -12,7 +12,7 @@ namespace Avalonia.Controls
     /// <summary>
     /// Control that implements support for transformations as if applied by LayoutTransform.
     /// </summary>
-    public class LayoutTransformControl : Decorator
+    public class LayoutTransformControl : Border
     {
         public static readonly StyledProperty<ITransform> LayoutTransformProperty =
             AvaloniaProperty.Register<LayoutTransformControl, ITransform>(nameof(LayoutTransform));

@@ -13,6 +13,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Metadata;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
+using Avalonia.Media;
 
 #nullable enable
 
@@ -33,6 +34,13 @@ namespace Avalonia.Controls.Primitives
         /// </summary>
         public static readonly StyledProperty<Control?> ChildProperty =
             AvaloniaProperty.Register<Popup, Control?>(nameof(Child));
+
+
+        /// <summary>
+        /// Defines the <see cref="InheritsTransform"/> property.
+        /// </summary>
+        public static readonly StyledProperty<bool> InheritsTransformProperty =
+            AvaloniaProperty.Register<Popup, bool>(nameof(InheritsTransform));
 
         /// <summary>
         /// Defines the <see cref="IsOpen"/> property.
@@ -195,6 +203,16 @@ namespace Avalonia.Controls.Primitives
         {
             get;
             set;
+        }
+
+        /// <summary>
+        /// Gets or sets a value that determines whether the popup inherits the render transform
+        /// from its <see cref="PlacementTarget"/>. Defaults to false.
+        /// </summary>
+        public bool InheritsTransform
+        {
+            get => GetValue(InheritsTransformProperty);
+            set => SetValue(InheritsTransformProperty, value);
         }
 
         /// <summary>
@@ -396,15 +414,25 @@ namespace Avalonia.Controls.Primitives
             }
 
             _isOpenRequested = false;
-            var popupHost = OverlayPopupHost.CreatePopupHost(placementTarget, DependencyResolver);
 
+            var popupHost = OverlayPopupHost.CreatePopupHost(placementTarget, DependencyResolver);
             var handlerCleanup = new CompositeDisposable(7);
+            var placementRect = PlacementRect ?? new Rect(default, placementTarget.Bounds.Size);
 
             popupHost.BindConstraints(this, WidthProperty, MinWidthProperty, MaxWidthProperty,
                 HeightProperty, MinHeightProperty, MaxHeightProperty, TopmostProperty).DisposeWith(handlerCleanup);
 
             popupHost.SetChild(Child);
             ((ISetLogicalParent)popupHost).SetParent(this);
+
+            if (InheritsTransform && placementTarget.TransformToVisual(topLevel) is Matrix t)
+            {
+                popupHost.Transform = new MatrixTransform(t);
+            }
+            else
+            {
+                popupHost.Transform = null;
+            }
 
             popupHost.ConfigurePosition(
                 placementTarget,
@@ -413,7 +441,7 @@ namespace Avalonia.Controls.Primitives
                 PlacementAnchor,
                 PlacementGravity,
                 PlacementConstraintAdjustment,
-                PlacementRect);
+                placementRect);
 
             SubscribeToEventHandler<IPopupHost, EventHandler<TemplateAppliedEventArgs>>(popupHost, RootTemplateApplied,
                 (x, handler) => x.TemplateApplied += handler,

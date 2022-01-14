@@ -16,6 +16,12 @@ namespace Avalonia.Controls.Primitives
     /// </summary>
     public sealed class PopupRoot : WindowBase, IInteractive, IHostedVisualTreeRoot, IDisposable, IStyleHost, IPopupHost
     {
+        /// <summary>
+        /// Defines the <see cref="Transform"/> property.
+        /// </summary>
+        public static readonly StyledProperty<Transform> TransformProperty =
+            AvaloniaProperty.Register<PopupRoot, Transform>(nameof(Transform));
+
         private readonly TopLevel _parent;
         private PopupPositionerParameters _positionerParameters;        
 
@@ -53,7 +59,16 @@ namespace Avalonia.Controls.Primitives
         /// Gets the platform-specific window implementation.
         /// </summary>
         [CanBeNull]
-        public new IPopupImpl PlatformImpl => (IPopupImpl)base.PlatformImpl;               
+        public new IPopupImpl PlatformImpl => (IPopupImpl)base.PlatformImpl;
+
+        /// <summary>
+        /// Gets or sets a transform that will be applied to the popup.
+        /// </summary>
+        public Transform Transform
+        {
+            get => GetValue(TransformProperty);
+            set => SetValue(TransformProperty, value);
+        }
 
         /// <summary>
         /// Gets the parent control in the event route.
