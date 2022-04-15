@@ -217,6 +217,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.SourceGenerator", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DevAnalyzers", "src\tools\DevAnalyzers\DevAnalyzers.csproj", "{2B390431-288C-435C-BB6B-A374033BD8D1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Wayland", "src\Avalonia.Wayland\Avalonia.Wayland.csproj", "{A9184680-0B37-4515-8511-67DBE18EF08A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Ad-Hoc|Any CPU = Ad-Hoc|Any CPU
@@ -2022,6 +2024,7 @@ Global
 		{70B9F5CC-E2F9-4314-9514-EDE762ACCC4B} = {9B9E3891-2366-4253-A952-D08BCEB71098}
 		{CE910927-CE5A-456F-BC92-E4C757354A5C} = {C5A00AC3-B34C-4564-9BDD-2DA473EF4D8B}
 		{2B390431-288C-435C-BB6B-A374033BD8D1} = {4ED8B739-6F4E-4CD4-B993-545E6B5CE637}
+		{A9184680-0B37-4515-8511-67DBE18EF08A} = {50744505-D3A8-4086-A561-966B6763715C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {87366D66-1391-4D90-8999-95A620AD786A}

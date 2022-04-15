@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform;
+using System;
 
 namespace Avalonia
 {
@@ -29,7 +30,12 @@ namespace Avalonia
             }
             else
             {
-                LoadX11(builder);
+                string wl_display = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+                if(wl_display != null && wl_display.Length > 0) {
+                    LoadWayland(builder);
+                } else {
+                    LoadX11(builder);
+                }
                 LoadSkia(builder);
             }
             return builder;
@@ -45,6 +51,10 @@ namespace Avalonia
         static void LoadX11<TAppBuilder>(TAppBuilder builder)
             where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
              => builder.UseX11();
+
+        static void LoadWayland<TAppBuilder>(TAppBuilder builder)
+            where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
+            => builder.UseWayland();
 
         static void LoadSkia<TAppBuilder>(TAppBuilder builder)
             where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
