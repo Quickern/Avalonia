@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using Avalonia.Controls.Platform.Surfaces;
+using Avalonia.FreeDesktop;
 using Avalonia.LinuxFramebuffer.Output;
 using Avalonia.Platform;
 
@@ -37,7 +38,7 @@ namespace Avalonia.LinuxFramebuffer
         public FbdevOutput(string fileName, PixelFormat? format)
         {
             fileName ??= Environment.GetEnvironmentVariable("FRAMEBUFFER") ?? "/dev/fb0";
-            _fd = NativeUnsafeMethods.open(fileName, 2, 0);
+            _fd = NativeMethods.open(fileName, 2, 0);
             if (_fd <= 0)
                 throw new Exception("Error: " + Marshal.GetLastWin32Error());
 
@@ -56,19 +57,19 @@ namespace Avalonia.LinuxFramebuffer
         {
             fixed (void* pnfo = &_varInfo)
             {
-                if (-1 == NativeUnsafeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
+                if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
                     throw new Exception("FBIOGET_VSCREENINFO error: " + Marshal.GetLastWin32Error());
 
                 if (format.HasValue)
                 {
                     SetBpp(format.Value);
 
-                    if (-1 == NativeUnsafeMethods.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo))
+                    if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo))
                         _varInfo.transp = new fb_bitfield();
 
-                    NativeUnsafeMethods.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo);
+                    NativeMethods.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo);
 
-                    if (-1 == NativeUnsafeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
+                    if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
                         throw new Exception("FBIOGET_VSCREENINFO error: " + Marshal.GetLastWin32Error());
 
                     if (_varInfo.bits_per_pixel != 32)
@@ -76,11 +77,11 @@ namespace Avalonia.LinuxFramebuffer
                 }
             }
             fixed(void*pnfo = &_fixedInfo)
-                if (-1 == NativeUnsafeMethods.ioctl(_fd, FbIoCtl.FBIOGET_FSCREENINFO, pnfo))
+                if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_FSCREENINFO, pnfo))
                     throw new Exception("FBIOGET_FSCREENINFO error: " + Marshal.GetLastWin32Error());
 
             _mappedLength = new IntPtr(_fixedInfo.line_length * _varInfo.yres);
-            _mappedAddress = NativeUnsafeMethods.mmap(IntPtr.Zero, _mappedLength, 3, 1, _fd, IntPtr.Zero);
+            _mappedAddress = NativeMethods.mmap(IntPtr.Zero, _mappedLength, 3, 1, _fd, IntPtr.Zero);
             if (_mappedAddress == new IntPtr(-1))
                 throw new Exception($"Unable to mmap {_mappedLength} bytes, error {Marshal.GetLastWin32Error()}");
             fixed (fb_fix_screeninfo* pnfo = &_fixedInfo)
@@ -137,7 +138,7 @@ namespace Avalonia.LinuxFramebuffer
             get
             {
                 fb_var_screeninfo nfo;
-                if (-1 == NativeUnsafeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, &nfo))
+                if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, &nfo))
                     throw new Exception("FBIOGET_VSCREENINFO error: " + Marshal.GetLastWin32Error());
                 return new PixelSize((int)nfo.xres, (int)nfo.yres);
             }
@@ -157,12 +158,12 @@ namespace Avalonia.LinuxFramebuffer
         {
             if (_mappedAddress != IntPtr.Zero)
             {
-                NativeUnsafeMethods.munmap(_mappedAddress, _mappedLength);
+                NativeMethods.munmap(_mappedAddress, _mappedLength);
                 _mappedAddress = IntPtr.Zero;
             }
             if(_fd == 0)
                 return;
-            NativeUnsafeMethods.close(_fd);
+            NativeMethods.close(_fd);
             _fd = 0;
         }
 

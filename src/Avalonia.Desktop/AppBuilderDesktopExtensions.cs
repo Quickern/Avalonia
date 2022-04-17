@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Platform;
 
@@ -22,9 +23,14 @@ namespace Avalonia
                 LoadWin32(builder);
                 LoadSkia(builder);
             }
-            else if(os==OperatingSystemType.OSX)
+            else if(os == OperatingSystemType.OSX)
             {
                 LoadAvaloniaNative(builder);
+                LoadSkia(builder);
+            }
+            else if (Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is not null)
+            {
+                LoadWayland(builder);
                 LoadSkia(builder);
             }
             else
@@ -38,6 +44,7 @@ namespace Avalonia
         static void LoadAvaloniaNative<TAppBuilder>(TAppBuilder builder)
             where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
              => builder.UseAvaloniaNative();
+
         static void LoadWin32<TAppBuilder>(TAppBuilder builder)
             where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
              => builder.UseWin32();
@@ -45,6 +52,10 @@ namespace Avalonia
         static void LoadX11<TAppBuilder>(TAppBuilder builder)
             where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
              => builder.UseX11();
+
+        static void LoadWayland<TAppBuilder>(TAppBuilder builder)
+            where TAppBuilder : AppBuilderBase<TAppBuilder>, new()
+             => builder.UseWayland();
 
         static void LoadSkia<TAppBuilder>(TAppBuilder builder)
             where TAppBuilder : AppBuilderBase<TAppBuilder>, new()

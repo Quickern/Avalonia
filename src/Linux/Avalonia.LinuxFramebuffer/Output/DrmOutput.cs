@@ -1,15 +1,14 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Avalonia.FreeDesktop;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.OpenGL.Surfaces;
 using Avalonia.Platform.Interop;
-using static Avalonia.LinuxFramebuffer.NativeUnsafeMethods;
+using static Avalonia.FreeDesktop.NativeMethods;
 using static Avalonia.LinuxFramebuffer.Output.LibDrm;
-using static Avalonia.LinuxFramebuffer.Output.LibDrm.GbmColorFormats;
 
 namespace Avalonia.LinuxFramebuffer.Output
 {

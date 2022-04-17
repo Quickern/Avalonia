@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Threading;
+using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
-using Avalonia.Threading;
 using static Avalonia.LinuxFramebuffer.Input.LibInput.LibInputNativeUnsafeMethods; 
+
 namespace Avalonia.LinuxFramebuffer.Input.LibInput
 {
     public class LibInputBackend : IInputBackend
@@ -62,7 +62,7 @@ namespace Avalonia.LinuxFramebuffer.Input.LibInput
                 }
 
                 pollfd pfd = new pollfd {fd = fd, events = 1};
-                NativeUnsafeMethods.poll(&pfd, new IntPtr(1), 10);
+                NativeMethods.poll(&pfd, new IntPtr(1), 10);
             }
         }
 

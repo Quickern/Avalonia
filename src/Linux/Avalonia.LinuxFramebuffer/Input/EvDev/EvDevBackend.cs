@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+
+using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
-using Avalonia.Threading;
-using static Avalonia.LinuxFramebuffer.NativeUnsafeMethods;
+using static Avalonia.FreeDesktop.NativeMethods;
 
 namespace Avalonia.LinuxFramebuffer.Input.EvDev
 {

@@ -9,24 +9,20 @@ namespace Avalonia.OpenGL.Egl
     {
         public EglInterface() : base(Load())
         {
-            
         }
 
         public EglInterface(Func<Utf8Buffer,IntPtr> getProcAddress) : base(getProcAddress)
         {
-            
         }
-        
+
         public EglInterface(Func<string, IntPtr> getProcAddress) : base(getProcAddress)
         {
-            
         }
-        
+
         public EglInterface(string library) : base(Load(library))
         {
         }
 
-        
         static Func<string, IntPtr> Load()
         {
             var os = AvaloniaLocator.Current.GetService<IRuntimePlatform>().GetRuntimeInfo().OperatingSystem;
@@ -57,10 +53,14 @@ namespace Avalonia.OpenGL.Egl
         public EglGetDisplay GetDisplay { get; }
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        public delegate IntPtr EglGetPlatformDisplayEXT(int platform, IntPtr nativeDisplay, int[] attrs);
+        public delegate IntPtr EglGetPlatformDisplay(int platform, IntPtr nativeDisplay, int[] attrs);
         [GlEntryPoint("eglGetPlatformDisplayEXT")]
         [GlOptionalEntryPoint]
-        public EglGetPlatformDisplayEXT GetPlatformDisplayEXT { get; }
+        public EglGetPlatformDisplay GetPlatformDisplayEXT { get; }
+
+        [GlEntryPoint("eglGetPlatformDisplay")]
+        [GlOptionalEntryPoint]
+        public EglGetPlatformDisplay GetPlatformDisplay { get; }
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate bool EglInitialize(IntPtr display, out int major, out int minor);
@@ -123,7 +123,7 @@ namespace Avalonia.OpenGL.Egl
         public delegate void EglDisplaySurfaceVoidDelegate(IntPtr display, IntPtr surface);
         [GlEntryPoint("eglDestroySurface")]
         public EglDisplaySurfaceVoidDelegate DestroySurface { get; }
-        
+
         [GlEntryPoint("eglSwapBuffers")]
         public EglDisplaySurfaceVoidDelegate SwapBuffers { get; }
 
@@ -155,7 +155,7 @@ namespace Avalonia.OpenGL.Egl
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate IntPtr EglQueryString(IntPtr display, int i);
-        
+
         [GlEntryPoint("eglQueryString")]
         public EglQueryString QueryStringNative { get; }
 

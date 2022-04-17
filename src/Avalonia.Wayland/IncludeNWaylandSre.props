@@ -1,0 +1,9 @@
+<Project>
+  <ItemGroup>
+    <None Remove="$(MSBuildThisFileDirectory)\nwayland.github\**\*.*" />
+    <Content Remove="$(MSBuildThisFileDirectory)\nwayland.github\**\*.*" />
+    <Compile Remove="$(MSBuildThisFileDirectory)\nwayland.github\**\*.*" />
+    <Compile Include="$(MSBuildThisFileDirectory)\nwayland.github\src\NWayland\**\*.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)\nwayland.github\src\NWayland.Protocols.KWayland\**\*.cs" />
+  </ItemGroup>
+</Project>

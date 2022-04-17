@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Avalonia.FreeDesktop;
 using Avalonia.Platform;
 
 namespace Avalonia.LinuxFramebuffer.Output
@@ -21,7 +22,6 @@ namespace Avalonia.LinuxFramebuffer.Output
             _targetAddress = targetAddress;
             Address = Marshal.AllocHGlobal(RowBytes * Size.Height);
         }
-        
 
         public void Dispose()
         {
@@ -47,8 +47,8 @@ namespace Avalonia.LinuxFramebuffer.Output
                     {
                         try
                         {
-                            NativeUnsafeMethods.ioctl(_fb, FbIoCtl.FBIO_WAITFORVSYNC, null);
-                            NativeUnsafeMethods.memcpy(_targetAddress, Address, new IntPtr(RowBytes * Size.Height));
+                            NativeMethods.ioctl(_fb, FbIoCtl.FBIO_WAITFORVSYNC, null);
+                            NativeMethods.memcpy(_targetAddress, Address, new IntPtr(RowBytes * Size.Height));
                         }
                         finally
                         {
