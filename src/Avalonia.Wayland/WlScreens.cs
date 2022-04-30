@@ -77,24 +77,24 @@ namespace Avalonia.Wayland
                 wlOutput.Events = this;
             }
 
-            void WlOutput.IEvents.OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform)
+            public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform)
             {
                 _x = x;
                 _y = y;
             }
 
-            void WlOutput.IEvents.OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
+            public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
             {
                 _width = width;
                 _height = height;
             }
 
-            void WlOutput.IEvents.OnScale(WlOutput eventSender, int factor)
+            public void OnScale(WlOutput eventSender, int factor)
             {
                 PixelDensity = factor;
             }
 
-            void WlOutput.IEvents.OnDone(WlOutput eventSender) { }
+            public void OnDone(WlOutput eventSender) { }
 
             public void Dispose()
             {

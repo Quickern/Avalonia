@@ -41,7 +41,7 @@ namespace Avalonia.Wayland
             //_wlPointer.SetCursor(LastSerial, );
         }
 
-        void WlSeat.IEvents.OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)
+        public void OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)
         {
             if (capabilities.HasAllFlags(WlSeat.CapabilityEnum.Pointer))
             {
@@ -63,44 +63,44 @@ namespace Avalonia.Wayland
             }
         }
 
-        void WlSeat.IEvents.OnName(WlSeat eventSender, string name) { }
+        public void OnName(WlSeat eventSender, string name) { }
 
-        void WlPointer.IEvents.OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
+        public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
         {
             _pointerPosition = new Point(surfaceX / 256, surfaceY / 256);
             LastSerial = serial;
         }
 
-        void WlPointer.IEvents.OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
+        public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
             LastSerial = serial;
             Input?.Invoke(new RawPointerEventArgs(MouseDevice!, 0, InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers.None));
         }
 
-        void WlPointer.IEvents.OnMotion(WlPointer eventSender, uint time, int surfaceX, int surfaceY)
+        public void OnMotion(WlPointer eventSender, uint time, int surfaceX, int surfaceY)
         {
             _pointerPosition = new Point(surfaceX / 256, surfaceY / 256);
             Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers.None));
         }
 
-        void WlPointer.IEvents.OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
+        public void OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
         {
             LastSerial = serial;
             Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, ProcessButton(button, state), _pointerPosition, RawInputModifiers.None));
         }
 
-        void WlPointer.IEvents.OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, int value)
+        public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, int value)
             => Input?.Invoke(new RawMouseWheelEventArgs(MouseDevice!, time, InputRoot, _pointerPosition, GetVectorForAxis(axis, value), RawInputModifiers.None));
 
-        void WlPointer.IEvents.OnFrame(WlPointer eventSender) { }
+        public void OnFrame(WlPointer eventSender) { }
 
-        void WlPointer.IEvents.OnAxisSource(WlPointer eventSender, WlPointer.AxisSourceEnum axisSource) { }
+        public void OnAxisSource(WlPointer eventSender, WlPointer.AxisSourceEnum axisSource) { }
 
-        void WlPointer.IEvents.OnAxisStop(WlPointer eventSender, uint time, WlPointer.AxisEnum axis) { }
+        public void OnAxisStop(WlPointer eventSender, uint time, WlPointer.AxisEnum axis) { }
 
-        void WlPointer.IEvents.OnAxisDiscrete(WlPointer eventSender, WlPointer.AxisEnum axis, int discrete) { }
+        public void OnAxisDiscrete(WlPointer eventSender, WlPointer.AxisEnum axis, int discrete) { }
 
-        void WlKeyboard.IEvents.OnKeymap(WlKeyboard eventSender, WlKeyboard.KeymapFormatEnum format, int fd, uint size)
+        public void OnKeymap(WlKeyboard eventSender, WlKeyboard.KeymapFormatEnum format, int fd, uint size)
         {
             var map = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), 0x1, 0x02, fd, IntPtr.Zero);
 
@@ -128,17 +128,17 @@ namespace Avalonia.Wayland
             LibXkbCommon.xkb_context_unref(context);
         }
 
-        void WlKeyboard.IEvents.OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
+        public void OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
         {
             LastSerial = serial;
         }
 
-        void WlKeyboard.IEvents.OnLeave(WlKeyboard eventSender, uint serial, WlSurface surface)
+        public void OnLeave(WlKeyboard eventSender, uint serial, WlSurface surface)
         {
             LastSerial = serial;
         }
 
-        unsafe void WlKeyboard.IEvents.OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
+        public unsafe void OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
         {
             LastSerial = serial;
             var code = key + 8;
@@ -152,47 +152,47 @@ namespace Avalonia.Wayland
             }
         }
 
-        void WlKeyboard.IEvents.OnModifiers(WlKeyboard eventSender, uint serial, uint modsDepressed, uint modsLatched, uint modsLocked, uint group)
+        public void OnModifiers(WlKeyboard eventSender, uint serial, uint modsDepressed, uint modsLatched, uint modsLocked, uint group)
         {
             LastSerial = serial;
         }
 
-        void WlKeyboard.IEvents.OnRepeatInfo(WlKeyboard eventSender, int rate, int delay)
+        public void OnRepeatInfo(WlKeyboard eventSender, int rate, int delay)
         {
 
         }
 
-        void WlTouch.IEvents.OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, int x, int y)
-        {
-            LastSerial = serial;
-        }
-
-        void WlTouch.IEvents.OnUp(WlTouch eventSender, uint serial, uint time, int id)
+        public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, int x, int y)
         {
             LastSerial = serial;
         }
 
-        void WlTouch.IEvents.OnMotion(WlTouch eventSender, uint time, int id, int x, int y)
+        public void OnUp(WlTouch eventSender, uint serial, uint time, int id)
+        {
+            LastSerial = serial;
+        }
+
+        public void OnMotion(WlTouch eventSender, uint time, int id, int x, int y)
         {
 
         }
 
-        void WlTouch.IEvents.OnFrame(WlTouch eventSender)
+        public void OnFrame(WlTouch eventSender)
         {
 
         }
 
-        void WlTouch.IEvents.OnCancel(WlTouch eventSender)
+        public void OnCancel(WlTouch eventSender)
         {
 
         }
 
-        void WlTouch.IEvents.OnShape(WlTouch eventSender, int id, int major, int minor)
+        public void OnShape(WlTouch eventSender, int id, int major, int minor)
         {
 
         }
 
-        void WlTouch.IEvents.OnOrientation(WlTouch eventSender, int id, int orientation)
+        public void OnOrientation(WlTouch eventSender, int id, int orientation)
         {
 
         }

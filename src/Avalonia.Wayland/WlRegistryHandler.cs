@@ -6,7 +6,7 @@ using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
 {
-    public class WlRegistryHandler : WlRegistry.IEvents
+    public class WlRegistryHandler : WlRegistry.IEvents, IDisposable
     {
         private readonly WlRegistry _registry;
         private readonly Dictionary<uint, GlobalInfo> _globals = new();
@@ -31,14 +31,14 @@ namespace Avalonia.Wayland
 
         public event Action<GlobalInfo>? GlobalRemoved;
 
-        void WlRegistry.IEvents.OnGlobal(WlRegistry eventSender, uint name, string @interface, uint version)
+        public void OnGlobal(WlRegistry eventSender, uint name, string @interface, uint version)
         {
             var global = new GlobalInfo(name, @interface, (int) version);
             _globals[name] = global;
             _globalAdded?.Invoke(global);
         }
 
-        void WlRegistry.IEvents.OnGlobalRemove(WlRegistry eventSender, uint name)
+        public void OnGlobalRemove(WlRegistry eventSender, uint name)
         {
             if (!_globals.TryGetValue(name, out var glob)) return;
             _globals.Remove(name);
@@ -64,6 +64,11 @@ namespace Avalonia.Wayland
                 throw new NotSupportedException($"Compositor doesn't support {version} of {global.Interface}, only {global.Version} is supported");
 
             return _registry.Bind(global.Name, factory, global.Version);
+        }
+
+        public void Dispose()
+        {
+            _registry.Dispose();
         }
 
         public sealed class GlobalInfo

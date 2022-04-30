@@ -89,6 +89,19 @@ namespace Avalonia.Wayland
             // TODO
             return null;
         }
+
+        public void Dispose()
+        {
+            WlSeat.Dispose();
+            WlShm.Dispose();
+            XdgWmBase.Dispose();
+            XdgActivation.Dispose();
+            ZxdgDecorationManager.Dispose();
+            ZxdgOutputManager.Dispose();
+            WlCompositor.Dispose();
+            WlRegistryHandler.Dispose();
+            WlDisplay.Dispose();
+        }
     }
 }
 

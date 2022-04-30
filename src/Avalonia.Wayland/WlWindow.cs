@@ -8,13 +8,14 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
+using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgDecorationUnstableV1;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    public class WlWindow : IWindowImpl, WlSurface.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, WlCallback.IEvents
+    public class WlWindow : IWindowImpl, WlSurface.IEvents, WlCallback.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, ZxdgToplevelDecorationV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlScreens _wlScreens;
@@ -25,6 +26,7 @@ namespace Avalonia.Wayland
         private readonly WlInputDevice _wlInputDevice;
 
         private bool _active;
+        private bool _needsResize;
 
         public WlWindow(AvaloniaWaylandPlatform platform, IWindowImpl? popupParent)
         {
@@ -77,17 +79,6 @@ namespace Avalonia.Wayland
             public double Scaling => _wlWindow.RenderScaling;
         }
 
-        public void Dispose()
-        {
-            _toplevelDecoration.Dispose();
-            _xdgToplevel.Dispose();
-            _xdgSurface.Dispose();
-            _wlSurface.Dispose();
-            _wlScreens.Dispose();
-            if (Handle.Handle != IntPtr.Zero)
-                LibWayland.wl_egl_window_destroy(Handle.Handle);
-        }
-
         public Size ClientSize { get; private set; }
         public Size? FrameSize { get; }
         public double RenderScaling { get; private set; } = 1;
@@ -134,7 +125,7 @@ namespace Avalonia.Wayland
 
         public Action? Closed { get; set; }
         public Action? LostFocus { get; set; }
-        public IMouseDevice MouseDevice { get; } = new MouseDevice();
+        public IMouseDevice MouseDevice => _wlInputDevice.MouseDevice;
 
         public IPopupImpl? CreatePopup()
         {
@@ -152,7 +143,7 @@ namespace Avalonia.Wayland
         public void Show(bool activate, bool isDialog)
         {
             _wlSurface.Commit();
-            _platform.WlDisplay.Sync().Events = this;
+            ScheduleRedraw();
         }
 
         public void Hide()
@@ -161,8 +152,9 @@ namespace Avalonia.Wayland
         }
 
         public double DesktopScaling => RenderScaling;
-        public PixelPoint Position { get; private set; }
+        public PixelPoint Position { get; }
         public Action<PixelPoint>? PositionChanged { get; set; }
+
         public void Activate()
         {
 
@@ -172,6 +164,7 @@ namespace Avalonia.Wayland
         public Action? Activated { get; set; }
         public IPlatformHandle Handle { get; }
         public Size MaxAutoSizeHint { get; }
+
         public void SetTopmost(bool value)
         {
 
@@ -197,10 +190,8 @@ namespace Avalonia.Wayland
                     case WindowState.FullScreen:
                         _xdgToplevel.SetFullscreen(null);
                         break;
-                    case WindowState.Normal when _windowState == WindowState.Maximized:
+                    case WindowState.Normal:
                         _xdgToplevel.UnsetMaximized();
-                        break;
-                    case WindowState.Normal when _windowState == WindowState.FullScreen:
                         _xdgToplevel.UnsetFullscreen();
                         break;
                     default:
@@ -255,7 +246,7 @@ namespace Avalonia.Wayland
         }
 
         public Func<bool>? Closing { get; set; }
-        public bool IsClientAreaExtendedToDecorations { get; }
+        public bool IsClientAreaExtendedToDecorations { get; private set; }
         public Action<bool> ExtendClientAreaToDecorationsChanged { get; set; }
         public bool NeedsManagedDecorations { get; }
         public Thickness ExtendedMargins { get; }
@@ -263,27 +254,31 @@ namespace Avalonia.Wayland
 
         public void BeginMoveDrag(PointerPressedEventArgs e)
         {
-
+            _xdgToplevel.Move(_platform.WlSeat, _wlInputDevice.LastSerial);
         }
 
         public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e)
         {
-
+            _xdgToplevel.Resize(_platform.WlSeat, _wlInputDevice.LastSerial, _windowEdges[edge]);
         }
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
             if (clientSize == ClientSize) return;
-            LibWayland.wl_egl_window_resize(Handle.Handle, (int)clientSize.Width, (int)clientSize.Height, 0, 0);
             ClientSize = clientSize;
+            _needsResize = true;
         }
 
         public void Move(PixelPoint point) { }
 
         public void SetMinMaxSize(Size minSize, Size maxSize)
         {
-            _xdgToplevel.SetMinSize((int)minSize.Width, (int)minSize.Height);
-            _xdgToplevel.SetMaxSize((int)maxSize.Width, (int)maxSize.Height);
+            var minX = double.IsInfinity(minSize.Width) ? 0 : (int)minSize.Width;
+            var minY = double.IsInfinity(minSize.Height) ? 0 : (int)minSize.Height;
+            var maxX = double.IsInfinity(maxSize.Width) ? 0 : (int)maxSize.Width;
+            var maxY = double.IsInfinity(maxSize.Height) ? 0 : (int)maxSize.Height;
+            _xdgToplevel.SetMinSize(minX, minY);
+            _xdgToplevel.SetMaxSize(maxX, maxY);
         }
 
         public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) =>
@@ -294,26 +289,20 @@ namespace Avalonia.Wayland
         public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) { }
 
         public IPopupPositioner PopupPositioner { get; }
+
         public void SetWindowManagerAddShadowHint(bool enabled)
         {
 
         }
 
-        void XdgToplevel.IEvents.OnConfigure(XdgToplevel eventSender, int width, int height, ReadOnlySpan<XdgToplevel.StateEnum> states)
+        public void OnConfigure(XdgToplevel eventSender, int width, int height, ReadOnlySpan<XdgToplevel.StateEnum> states)
         {
-            var newSize = new Size(width, height) * RenderScaling;
-            if (newSize == Size.Empty) return;
-            if (newSize != ClientSize)
-            {
-                ClientSize = newSize;
-                LibWayland.wl_egl_window_resize(Handle.Handle, (int)newSize.Width, (int)newSize.Height, 0, 0);
-                Resized?.Invoke(ClientSize, PlatformResizeReason.User);
-            }
-
             if (states.Length == 0 && _active)
             {
                 Deactivated?.Invoke();
+                _windowState = WindowState.Minimized;
                 _active = false;
+                WindowStateChanged?.Invoke(_windowState);
                 return;
             }
 
@@ -322,11 +311,13 @@ namespace Avalonia.Wayland
             {
                 switch (state)
                 {
-                    case XdgToplevel.StateEnum.Maximized:
+                    case XdgToplevel.StateEnum.Maximized when _windowState != WindowState.Maximized:
                         _windowState = WindowState.Maximized;
+                        WindowStateChanged?.Invoke(_windowState);
                         break;
-                    case XdgToplevel.StateEnum.Fullscreen:
+                    case XdgToplevel.StateEnum.Fullscreen when _windowState != WindowState.FullScreen:
                         _windowState = WindowState.FullScreen;
+                        WindowStateChanged?.Invoke(_windowState);
                         break;
                     case XdgToplevel.StateEnum.Activated when !_active:
                         Activated?.Invoke();
@@ -335,27 +326,41 @@ namespace Avalonia.Wayland
                 }
             }
 
-            _platform.WlDisplay.Sync().Events = this;
+            var newSize = new Size(width, height) * RenderScaling;
+            if (newSize != ClientSize && newSize != Size.Empty)
+            {
+                ClientSize = newSize;
+                _needsResize = true;
+            }
+
+            ScheduleRedraw();
         }
 
-        void XdgToplevel.IEvents.OnClose(XdgToplevel eventSender)
+        public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)
+        {
+            var isExtended = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
+            if (isExtended == IsClientAreaExtendedToDecorations) return;
+            IsClientAreaExtendedToDecorations = isExtended;
+            ExtendClientAreaToDecorationsChanged?.Invoke(IsClientAreaExtendedToDecorations);
+        }
+
+        public void OnClose(XdgToplevel eventSender)
         {
             if (Closing?.Invoke() is not true)
                 Closed?.Invoke();
         }
 
-        void WlCallback.IEvents.OnDone(WlCallback eventSender, uint callbackData)
+        public void OnDone(WlCallback eventSender, uint callbackData)
         {
-            Paint?.Invoke(new Rect());
-            _wlSurface.Frame().Events = this;
-            NWayland.Interop.LibWayland.wl_callback_destroy(eventSender.Handle);
+            Redraw();
+            LibWayland.wl_callback_destroy(eventSender.Handle);
         }
 
-        void XdgSurface.IEvents.OnConfigure(XdgSurface eventSender, uint serial) => _xdgSurface.AckConfigure(serial);
+        public void OnConfigure(XdgSurface eventSender, uint serial) => _xdgSurface.AckConfigure(serial);
 
-        void XdgWmBase.IEvents.OnPing(XdgWmBase eventSender, uint serial) => _platform.XdgWmBase.Pong(serial);
+        public void OnPing(XdgWmBase eventSender, uint serial) => _platform.XdgWmBase.Pong(serial);
 
-        void WlSurface.IEvents.OnEnter(WlSurface eventSender, WlOutput output)
+        public void OnEnter(WlSurface eventSender, WlOutput output)
         {
             var screen = _wlScreens.ScreenFromOutput(output);
             if (Math.Abs(screen.PixelDensity - RenderScaling) < double.Epsilon) return;
@@ -363,6 +368,47 @@ namespace Avalonia.Wayland
             ScalingChanged?.Invoke(RenderScaling);
         }
 
-        void WlSurface.IEvents.OnLeave(WlSurface eventSender, WlOutput output) { }
+        public void OnLeave(WlSurface eventSender, WlOutput output) { }
+
+        public void Dispose()
+        {
+            _toplevelDecoration.Dispose();
+            _xdgToplevel.Dispose();
+            _xdgSurface.Dispose();
+            _wlSurface.Dispose();
+            _wlScreens.Dispose();
+            if (Handle.Handle != IntPtr.Zero)
+                LibWayland.wl_egl_window_destroy(Handle.Handle);
+        }
+
+        private void ScheduleRedraw()
+        {
+            _wlSurface.Frame().Events = this;
+        }
+
+        private void Redraw()
+        {
+            if (_needsResize)
+            {
+                LibWayland.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
+                Resized?.Invoke(ClientSize, PlatformResizeReason.User);
+                _needsResize = false;
+            }
+
+            Paint?.Invoke(new Rect());
+            ScheduleRedraw();
+        }
+
+        private static Dictionary<WindowEdge, XdgToplevel.ResizeEdgeEnum> _windowEdges = new()
+        {
+            { WindowEdge.North, XdgToplevel.ResizeEdgeEnum.Top },
+            { WindowEdge.East, XdgToplevel.ResizeEdgeEnum.Right },
+            { WindowEdge.South, XdgToplevel.ResizeEdgeEnum.Bottom },
+            { WindowEdge.West, XdgToplevel.ResizeEdgeEnum.Left },
+            { WindowEdge.NorthEast, XdgToplevel.ResizeEdgeEnum.TopLeft },
+            { WindowEdge.SouthEast, XdgToplevel.ResizeEdgeEnum.BottomLeft },
+            { WindowEdge.NorthWest, XdgToplevel.ResizeEdgeEnum.TopRight },
+            { WindowEdge.SouthWest, XdgToplevel.ResizeEdgeEnum.BottomRight }
+        };
     }
 }

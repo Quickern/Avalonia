@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Avalonia.Input;
 using Avalonia.Platform;
+using NWayland.Interop;
 
 namespace Avalonia.Wayland
 {
