@@ -31,6 +31,7 @@ namespace Avalonia.Wayland
         [DllImport(XkbCommon)]
         public static extern bool xkb_keymap_key_repeats(IntPtr keymap, uint key);
 
+        [DllImport(XkbCommon)]
         public static extern unsafe int xkb_keysym_to_utf8(uint sym, char* buffer, uint size);
 
         [DllImport(XkbCommon)]

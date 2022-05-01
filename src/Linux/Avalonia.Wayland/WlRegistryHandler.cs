@@ -45,25 +45,22 @@ namespace Avalonia.Wayland
             GlobalRemoved?.Invoke(glob);
         }
 
-        public T Bind<T>(IBindFactory<T> factory, string @interface, int version) where T : WlProxy
+        public T? Bind<T>(IBindFactory<T> factory, string @interface, int version) where T : WlProxy
         {
             var global = _globals.Values.FirstOrDefault(g => g.Interface == @interface);
 
-            if (global == null)
+            if (global is null)
                 throw new NotSupportedException($"Unable to find {@interface} in the registry");
 
             return Bind(factory, version, global);
         }
 
-        public unsafe T Bind<T>(IBindFactory<T> factory, int version, GlobalInfo global) where T : WlProxy
+        public unsafe T? Bind<T>(IBindFactory<T> factory, int version, GlobalInfo global) where T : WlProxy
         {
             if (version > factory.GetInterface()->Version)
                 throw new ArgumentException($"Version {version} is not supported");
-
-            if (global.Version < version)
-                throw new NotSupportedException($"Compositor doesn't support {version} of {global.Interface}, only {global.Version} is supported");
-
-            return _registry.Bind(global.Name, factory, global.Version);
+            var requestVersion = Math.Min(version, global.Version);
+            return _registry.Bind(global.Name, factory, requestVersion);
         }
 
         public void Dispose()

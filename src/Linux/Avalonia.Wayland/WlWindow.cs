@@ -361,7 +361,6 @@ namespace Avalonia.Wayland
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
             Redraw();
-            LibWayland.wl_callback_destroy(eventSender.Handle);
         }
 
         public void OnConfigure(XdgSurface eventSender, uint serial) => _xdgSurface.AckConfigure(serial);
