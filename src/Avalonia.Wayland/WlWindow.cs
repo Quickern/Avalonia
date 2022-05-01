@@ -27,6 +27,7 @@ namespace Avalonia.Wayland
 
         private bool _active;
         private bool _needsResize;
+        private WlOutput _activeWlOutput;
 
         public WlWindow(AvaloniaWaylandPlatform platform, IWindowImpl? popupParent)
         {
@@ -185,14 +186,18 @@ namespace Avalonia.Wayland
                         _xdgToplevel.SetMinimized();
                         break;
                     case WindowState.Maximized:
+                        if (_windowState == WindowState.FullScreen)
+                            _xdgToplevel.UnsetFullscreen();
                         _xdgToplevel.SetMaximized();
                         break;
                     case WindowState.FullScreen:
-                        _xdgToplevel.SetFullscreen(null);
+                        _xdgToplevel.SetFullscreen(_activeWlOutput);
                         break;
                     case WindowState.Normal:
-                        _xdgToplevel.UnsetMaximized();
-                        _xdgToplevel.UnsetFullscreen();
+                        if (_windowState == WindowState.Maximized)
+                            _xdgToplevel.UnsetMaximized();
+                        else if (_windowState == WindowState.FullScreen)
+                            _xdgToplevel.UnsetFullscreen();
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(value), value, null);
@@ -342,6 +347,7 @@ namespace Avalonia.Wayland
             if (isExtended == IsClientAreaExtendedToDecorations) return;
             IsClientAreaExtendedToDecorations = isExtended;
             ExtendClientAreaToDecorationsChanged?.Invoke(IsClientAreaExtendedToDecorations);
+            ScheduleRedraw();
         }
 
         public void OnClose(XdgToplevel eventSender)
@@ -362,6 +368,7 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
         {
+            _activeWlOutput = output;
             var screen = _wlScreens.ScreenFromOutput(output);
             if (Math.Abs(screen.PixelDensity - RenderScaling) < double.Epsilon) return;
             RenderScaling = screen.PixelDensity;
@@ -381,10 +388,7 @@ namespace Avalonia.Wayland
                 LibWayland.wl_egl_window_destroy(Handle.Handle);
         }
 
-        private void ScheduleRedraw()
-        {
-            _wlSurface.Frame().Events = this;
-        }
+        private void ScheduleRedraw() => _wlSurface.Frame().Events = this;
 
         private void Redraw()
         {
@@ -399,7 +403,7 @@ namespace Avalonia.Wayland
             ScheduleRedraw();
         }
 
-        private static Dictionary<WindowEdge, XdgToplevel.ResizeEdgeEnum> _windowEdges = new()
+        private static readonly Dictionary<WindowEdge, XdgToplevel.ResizeEdgeEnum> _windowEdges = new()
         {
             { WindowEdge.North, XdgToplevel.ResizeEdgeEnum.Top },
             { WindowEdge.East, XdgToplevel.ResizeEdgeEnum.Right },

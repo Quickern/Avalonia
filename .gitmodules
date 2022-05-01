@@ -4,6 +4,3 @@
 [submodule "src/Markup/Avalonia.Markup.Xaml/XamlIl/xamlil.github"]
 	path = src/Markup/Avalonia.Markup.Xaml.Loader/xamlil.github
 	url = https://github.com/kekekeks/XamlX.git
-[submodule "src/Avalonia.Wayland/nwayland.github"]
-	path = src/Avalonia.Wayland/nwayland.github
-	url = https://github.com/kekekes/NWayland.git

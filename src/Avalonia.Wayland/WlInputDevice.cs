@@ -1,4 +1,6 @@
 using System;
+using System.Threading.Tasks;
+using System.Timers;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
@@ -6,21 +8,36 @@ using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
 {
-    public class WlInputDevice : WlSeat.IEvents, WlPointer.IEvents, WlKeyboard.IEvents, WlTouch.IEvents
+    public class WlInputDevice : WlSeat.IEvents, WlPointer.IEvents, WlKeyboard.IEvents, WlTouch.IEvents, IDisposable
     {
         private readonly AvaloniaWaylandPlatform _platform;
+        private readonly Timer _timer;
 
         private WlPointer? _wlPointer;
         private WlKeyboard? _wlKeyboard;
         private WlTouch? _wlTouch;
         private Point _pointerPosition;
+
         private IntPtr _xkbKeymap;
         private IntPtr _xkbState;
+
+        private bool _needsDelay;
+        private int _repeatDelay;
+        private uint _repeatTime;
+        private uint _repeatSym;
+
+        private uint _ctrlMask;
+        private uint _altMask;
+        private uint _shiftMask;
+        private uint _metaMask;
+        private RawInputModifiers _modifiers;
 
         public WlInputDevice(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             _platform.WlSeat.Events = this;
+            _timer = new Timer();
+            //_timer.Elapsed += OnRepeatKey;
         }
 
         public MouseDevice? MouseDevice { get; private set; }
@@ -67,30 +84,30 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
         {
-            _pointerPosition = new Point(surfaceX / 256, surfaceY / 256);
+            _pointerPosition = new Point(surfaceX / 256d, surfaceY / 256d);
             LastSerial = serial;
         }
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
             LastSerial = serial;
-            Input?.Invoke(new RawPointerEventArgs(MouseDevice!, 0, InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers.None));
+            Input?.Invoke(new RawPointerEventArgs(MouseDevice!, 0, InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, _modifiers));
         }
 
         public void OnMotion(WlPointer eventSender, uint time, int surfaceX, int surfaceY)
         {
-            _pointerPosition = new Point(surfaceX / 256, surfaceY / 256);
-            Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers.None));
+            _pointerPosition = new Point(surfaceX / 256d, surfaceY / 256d);
+            Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, RawPointerEventType.Move, _pointerPosition, _modifiers));
         }
 
         public void OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
         {
             LastSerial = serial;
-            Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, ProcessButton(button, state), _pointerPosition, RawInputModifiers.None));
+            Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, ProcessButton(button, state), _pointerPosition, _modifiers));
         }
 
         public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, int value)
-            => Input?.Invoke(new RawMouseWheelEventArgs(MouseDevice!, time, InputRoot, _pointerPosition, GetVectorForAxis(axis, value), RawInputModifiers.None));
+            => Input?.Invoke(new RawMouseWheelEventArgs(MouseDevice!, time, InputRoot, _pointerPosition, GetVectorForAxis(axis, value / 512d), _modifiers));
 
         public void OnFrame(WlPointer eventSender) { }
 
@@ -126,6 +143,11 @@ namespace Avalonia.Wayland
             LibXkbCommon.xkb_state_unref(_xkbState);
             _xkbState = LibXkbCommon.xkb_state_new(keymap);
             LibXkbCommon.xkb_context_unref(context);
+
+            _ctrlMask = LibXkbCommon.xkb_keymap_mod_get_index(keymap, "Control");
+            _altMask = LibXkbCommon.xkb_keymap_mod_get_index(keymap, "Mod1");
+            _shiftMask = LibXkbCommon.xkb_keymap_mod_get_index(keymap, "Shift");
+            _metaMask = LibXkbCommon.xkb_keymap_mod_get_index(keymap, "Mod4");
         }
 
         public void OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
@@ -146,20 +168,46 @@ namespace Avalonia.Wayland
             var numSyms = LibXkbCommon.xkb_state_key_get_syms(_xkbState, code, &syms);
             var sym = numSyms == 1 ? syms[0] : 0;
             var avaloniaKey = XkbKeyTransform.ConvertKey((XkbKey)sym);
-            if (state == WlKeyboard.KeyStateEnum.Pressed)
+
+            if (state == WlKeyboard.KeyStateEnum.Released && _repeatSym == sym)
             {
-                Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, (RawKeyEventType)state, avaloniaKey, RawInputModifiers.None));
+                _timer.Stop();
+                _repeatSym = sym;
+                _needsDelay = false;
+            }
+            else if (state == WlKeyboard.KeyStateEnum.Pressed)
+            {
+                Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, (RawKeyEventType)state, avaloniaKey, _modifiers));
+                SendKeySym(sym, time);
+                if (!LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code))
+                    return;
+                _repeatSym = sym;
+                _repeatTime = time;
+                _needsDelay = true;
+                _timer.Start();
             }
         }
 
         public void OnModifiers(WlKeyboard eventSender, uint serial, uint modsDepressed, uint modsLatched, uint modsLocked, uint group)
         {
             LastSerial = serial;
+            LibXkbCommon.xkb_state_update_mask(_xkbState, modsDepressed, modsLatched, modsLocked, 0, 0, group);
+            var mask = LibXkbCommon.xkb_state_serialize_mods(_xkbState, LibXkbCommon.XkbStateComponent.XKB_STATE_MODS_DEPRESSED | LibXkbCommon.XkbStateComponent.XKB_STATE_MODS_LATCHED);
+            _modifiers &= ~(RawInputModifiers.Control | RawInputModifiers.Alt | RawInputModifiers.Shift | RawInputModifiers.Meta);
+            if ((mask & _ctrlMask) != 0)
+                _modifiers |= RawInputModifiers.Control;
+            if ((mask & _altMask) != 0)
+                _modifiers |= RawInputModifiers.Alt;
+            if ((mask & _shiftMask) != 0)
+                _modifiers |= RawInputModifiers.Shift;
+            if ((mask & _metaMask) != 0)
+                _modifiers |= RawInputModifiers.Meta;
         }
 
         public void OnRepeatInfo(WlKeyboard eventSender, int rate, int delay)
         {
-
+            _repeatDelay = delay;
+            _timer.Interval = rate;
         }
 
         public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, int x, int y)
@@ -197,6 +245,25 @@ namespace Avalonia.Wayland
 
         }
 
+        private async void OnRepeatKey(object o, ElapsedEventArgs args)
+        {
+            if (_needsDelay)
+            {
+                await Task.Delay(_repeatDelay);
+                _needsDelay = false;
+            }
+
+            SendKeySym(_repeatSym, _repeatTime);
+        }
+
+        private unsafe void SendKeySym(uint sym, uint time)
+        {
+            var chars = stackalloc char[16];
+            if (LibXkbCommon.xkb_keysym_to_utf8(sym, chars, sizeof(char) * 16) <= 0)
+                return;
+            Input?.Invoke(new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, new string(chars)));
+        }
+
         private static RawPointerEventType ProcessButton(uint button, WlPointer.ButtonStateEnum buttonState)
             => button switch
                 {
@@ -212,7 +279,17 @@ namespace Avalonia.Wayland
                     _ => RawPointerEventType.NonClientLeftButtonDown
                 };
 
-        private static Vector GetVectorForAxis(WlPointer.AxisEnum axis, int value)
+        private static Vector GetVectorForAxis(WlPointer.AxisEnum axis, double value)
             => axis == WlPointer.AxisEnum.HorizontalScroll ? new Vector(-value, 0) : new Vector(0, -value);
+
+        public void Dispose()
+        {
+            _timer.Dispose();
+            _wlPointer?.Dispose();
+            _wlKeyboard?.Dispose();
+            _wlTouch?.Dispose();
+            MouseDevice?.Dispose();
+            TouchDevice?.Dispose();
+        }
     }
 }
