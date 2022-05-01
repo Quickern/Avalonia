@@ -8,10 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Avalonia.Base\Avalonia.Base.csproj" />
-    <ProjectReference Include="..\Avalonia.Controls\Avalonia.Controls.csproj" />
-    <ProjectReference Include="..\Avalonia.FreeDesktop\Avalonia.FreeDesktop.csproj" />
-    <ProjectReference Include="..\Avalonia.OpenGL\Avalonia.OpenGL.csproj" />
+    <ProjectReference Include="..\..\Avalonia.Base\Avalonia.Base.csproj" />
+    <ProjectReference Include="..\..\Avalonia.Controls\Avalonia.Controls.csproj" />
+    <ProjectReference Include="..\..\Avalonia.FreeDesktop\Avalonia.FreeDesktop.csproj" />
+    <ProjectReference Include="..\..\Avalonia.OpenGL\Avalonia.OpenGL.csproj" />
   </ItemGroup>
 
 </Project>
