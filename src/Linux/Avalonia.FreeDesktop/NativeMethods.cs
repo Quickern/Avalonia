@@ -8,64 +8,61 @@ namespace Avalonia.FreeDesktop
 {
     public static class NativeMethods
     {
+        private const string C = "libc";
+        private const string EvDev = "libevdev.so.2";
+
         public const int EPOLLIN = 1;
         public const int EPOLL_CTL_ADD = 1;
-        public const int O_NONBLOCK = 2048;
 
-        [DllImport("libc", SetLastError = true)]
+        [DllImport(C, SetLastError = true)]
         private static extern long readlink([MarshalAs(UnmanagedType.LPArray)] byte[] filename,
                                             [MarshalAs(UnmanagedType.LPArray)] byte[] buffer,
                                             long len);
 
-        [DllImport("libc", EntryPoint = "open", SetLastError = true)]
+        [DllImport(C, SetLastError = true)]
         public static extern int open(string pathname, int flags, int mode);
 
-        [DllImport("libc", EntryPoint = "close", SetLastError = true)]
+        [DllImport(C, SetLastError = true)]
         public static extern int close(int fd);
 
-        [DllImport("libc", EntryPoint = "ioctl", SetLastError = true)]
+        [DllImport(C, SetLastError = true)]
         public static extern unsafe int ioctl(int fd, FbIoCtl code, void* arg);
 
-        [DllImport("libc", EntryPoint = "mmap", SetLastError = true)]
+        [DllImport(C, SetLastError = true)]
         public static extern IntPtr mmap(IntPtr addr, IntPtr length, int prot, int flags, int fd, IntPtr offset);
 
-        [DllImport("libc", EntryPoint = "munmap", SetLastError = true)]
+        [DllImport(C, SetLastError = true)]
         public static extern int munmap(IntPtr addr, IntPtr length);
 
-        [DllImport("libc", EntryPoint = "memcpy", SetLastError = true)]
+        [DllImport(C, EntryPoint = "memcpy", SetLastError = true)]
         public static extern int memcpy(IntPtr dest, IntPtr src, IntPtr length);
 
-        [DllImport("libc", EntryPoint = "select", SetLastError = true)]
-        public static extern unsafe int select(int nfds, void* rfds, void* wfds, void* exfds, IntPtr* timevals);
-
-        [DllImport("libc", EntryPoint = "poll", SetLastError = true)]
+        [DllImport(C, EntryPoint = "poll", SetLastError = true)]
         public static extern unsafe int poll(pollfd* fds, IntPtr nfds, int timeout);
 
-        [DllImport("libc", EntryPoint = "mkstemp", SetLastError = true)]
-        public static extern int mkstemp(string path);
-
-        [DllImport("libevdev.so.2", EntryPoint = "libevdev_new_from_fd", SetLastError = true)]
-        public static extern int libevdev_new_from_fd(int fd, out IntPtr dev);
-
-        [DllImport("libevdev.so.2", EntryPoint = "libevdev_has_event_type", SetLastError = true)]
-        public static extern int libevdev_has_event_type(IntPtr dev, EvType type);
-
-        [DllImport("libevdev.so.2", EntryPoint = "libevdev_next_event", SetLastError = true)]
-        public static extern int libevdev_next_event(IntPtr dev, int flags, out input_event ev);
-
-        [DllImport("libevdev.so.2", EntryPoint = "libevdev_get_name", SetLastError = true)]
-        public static extern IntPtr libevdev_get_name(IntPtr dev);
-        [DllImport("libevdev.so.2", EntryPoint = "libevdev_get_abs_info", SetLastError = true)]
-        public static extern unsafe input_absinfo* libevdev_get_abs_info(IntPtr dev, int code);
-
-        [DllImport("libc")]
+        [DllImport(C, SetLastError = true)]
         public static extern int epoll_create1(int size);
 
-        [DllImport("libc")]
+        [DllImport(C, SetLastError = true)]
         public static extern int epoll_ctl(int epfd, int op, int fd, ref epoll_event __event);
 
-        [DllImport("libc")]
+        [DllImport(C, SetLastError = true)]
         public static extern unsafe int epoll_wait(int epfd, epoll_event* events, int maxevents, int timeout);
+
+        [DllImport(EvDev, SetLastError = true)]
+        public static extern int libevdev_new_from_fd(int fd, out IntPtr dev);
+
+        [DllImport(EvDev, SetLastError = true)]
+        public static extern int libevdev_has_event_type(IntPtr dev, EvType type);
+
+        [DllImport(EvDev, SetLastError = true)]
+        public static extern int libevdev_next_event(IntPtr dev, int flags, out input_event ev);
+
+        [DllImport(EvDev, SetLastError = true)]
+        public static extern IntPtr libevdev_get_name(IntPtr dev);
+
+        [DllImport(EvDev, SetLastError = true)]
+        public static extern unsafe input_absinfo* libevdev_get_abs_info(IntPtr dev, int code);
 
         public static string ReadLink(string path)
         {
