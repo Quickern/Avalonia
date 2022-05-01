@@ -156,7 +156,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.Build.Tasks", "src
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "nukebuild\_build.csproj", "{3F00BC43-5095-477F-93D8-E65B08179A00}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.X11", "src\Avalonia.X11\Avalonia.X11.csproj", "{41B02319-965D-4945-8005-C1A3D1224165}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.X11", "src\Linux\Avalonia.X11\Avalonia.X11.csproj", "{41B02319-965D-4945-8005-C1A3D1224165}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlatformSanityChecks", "samples\PlatformSanityChecks\PlatformSanityChecks.csproj", "{D775DECB-4E00-4ED5-A75A-5FCE58ADFF0B}"
 EndProject
@@ -168,7 +168,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.Controls.DataGrid"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.Dialogs", "src\Avalonia.Dialogs\Avalonia.Dialogs.csproj", "{4D55985A-1EE2-4F25-AD39-6EA8BC04F8FB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.FreeDesktop", "src\Avalonia.FreeDesktop\Avalonia.FreeDesktop.csproj", "{4D36CEC8-53F2-40A5-9A37-79AAE356E2DA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.FreeDesktop", "src\Linux\Avalonia.FreeDesktop\Avalonia.FreeDesktop.csproj", "{4D36CEC8-53F2-40A5-9A37-79AAE356E2DA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.Controls.DataGrid.UnitTests", "tests\Avalonia.Controls.DataGrid.UnitTests\Avalonia.Controls.DataGrid.UnitTests.csproj", "{351337F5-D66F-461B-A957-4EF60BDB4BA6}"
 EndProject
@@ -212,7 +212,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.SourceGenerator", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DevAnalyzers", "src\tools\DevAnalyzers\DevAnalyzers.csproj", "{2B390431-288C-435C-BB6B-A374033BD8D1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Wayland", "src\Avalonia.Wayland\Avalonia.Wayland.csproj", "{2016CB31-4733-41EB-A68A-A6DFB2F4D473}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Wayland", "src\Linux\Avalonia.Wayland\Avalonia.Wayland.csproj", "{2016CB31-4733-41EB-A68A-A6DFB2F4D473}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -2066,6 +2066,7 @@ Global
 		{70B9F5CC-E2F9-4314-9514-EDE762ACCC4B} = {9B9E3891-2366-4253-A952-D08BCEB71098}
 		{CE910927-CE5A-456F-BC92-E4C757354A5C} = {C5A00AC3-B34C-4564-9BDD-2DA473EF4D8B}
 		{2016CB31-4733-41EB-A68A-A6DFB2F4D473} = {86C53C40-57AA-45B8-AD42-FAE0EFDF0F2B}
+		{4D36CEC8-53F2-40A5-9A37-79AAE356E2DA} = {86C53C40-57AA-45B8-AD42-FAE0EFDF0F2B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {87366D66-1391-4D90-8999-95A620AD786A}
