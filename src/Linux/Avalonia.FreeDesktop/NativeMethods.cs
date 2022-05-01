@@ -91,7 +91,8 @@ namespace Avalonia.FreeDesktop
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct pollfd {
+    public struct pollfd
+    {
         public int   fd;         /* file descriptor */
         public short events;     /* requested events */
         public short revents;    /* returned events */
@@ -122,7 +123,8 @@ namespace Avalonia.FreeDesktop
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct fb_vblank {
+    public unsafe struct fb_vblank
+    {
         public VBlankFlags flags;			/* FB_VBLANK flags */
         uint count;			/* counter of retraces since boot */
         uint vcount;			/* current scanline position */

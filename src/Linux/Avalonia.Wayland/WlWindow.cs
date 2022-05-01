@@ -356,6 +356,8 @@ namespace Avalonia.Wayland
                 Closed?.Invoke();
         }
 
+        public void OnConfigureBounds(XdgToplevel eventSender, int width, int height) { }
+
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
             Redraw();

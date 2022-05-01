@@ -94,6 +94,10 @@ namespace Avalonia.Wayland
                 PixelDensity = factor;
             }
 
+            public void OnName(WlOutput eventSender, string name) { }
+
+            public void OnDescription(WlOutput eventSender, string description) { }
+
             public void OnDone(WlOutput eventSender) { }
 
             public void Dispose()

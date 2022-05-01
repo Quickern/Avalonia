@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\Avalonia.Controls\Avalonia.Controls.csproj" />
     <ProjectReference Include="..\..\Avalonia.OpenGL\Avalonia.OpenGL.csproj" />
     <ProjectReference Include="..\Avalonia.FreeDesktop\Avalonia.FreeDesktop.csproj" />
+    <ProjectReference Include="..\NWayland\src\NWayland\NWayland.csproj" />
   </ItemGroup>
 
 </Project>

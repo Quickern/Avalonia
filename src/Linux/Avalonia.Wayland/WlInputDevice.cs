@@ -117,6 +117,8 @@ namespace Avalonia.Wayland
 
         public void OnAxisDiscrete(WlPointer eventSender, WlPointer.AxisEnum axis, int discrete) { }
 
+        public void OnAxisValue120(WlPointer eventSender, WlPointer.AxisEnum axis, int value120) { }
+
         public void OnKeymap(WlKeyboard eventSender, WlKeyboard.KeymapFormatEnum format, int fd, uint size)
         {
             var map = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), 0x1, 0x02, fd, IntPtr.Zero);
