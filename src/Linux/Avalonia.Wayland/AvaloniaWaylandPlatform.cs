@@ -31,6 +31,8 @@ namespace Avalonia.Wayland
 
         public WlShm WlShm { get; private set; }
 
+        public WlDataDeviceManager WlDataDeviceManager { get; private set; }
+
         public XdgWmBase XdgWmBase { get; private set; }
 
         public XdgActivationV1 XdgActivation { get; private set; }
@@ -38,8 +40,6 @@ namespace Avalonia.Wayland
         public ZxdgDecorationManagerV1 ZxdgDecorationManager { get; private set; }
 
         public ZxdgOutputManagerV1 ZxdgOutputManager { get; private set; }
-
-        public WlInputDevice WlInputDevice { get; private set; }
 
         public void Initialize(WaylandPlatformOptions options)
         {
@@ -51,11 +51,11 @@ namespace Avalonia.Wayland
             WlCompositor = WlRegistryHandler.Bind(WlCompositor.BindFactory, WlCompositor.InterfaceName, WlCompositor.InterfaceVersion);
             WlSeat = WlRegistryHandler.Bind(WlSeat.BindFactory, WlSeat.InterfaceName, WlSeat.InterfaceVersion);
             WlShm = WlRegistryHandler.Bind(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
+            WlDataDeviceManager = WlRegistryHandler.Bind(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
             XdgWmBase = WlRegistryHandler.Bind(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
             XdgActivation = WlRegistryHandler.Bind(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgOutputManager = WlRegistryHandler.Bind(ZxdgOutputManagerV1.BindFactory, ZxdgOutputManagerV1.InterfaceName, ZxdgOutputManagerV1.InterfaceVersion);
-            WlInputDevice = new WlInputDevice(this);
 
             AvaloniaLocator.CurrentMutable.BindToSelf(this)
                 .Bind<IWindowingPlatform>().ToConstant(this)
@@ -65,7 +65,7 @@ namespace Avalonia.Wayland
                 .Bind<PlatformHotkeyConfiguration>().ToConstant(new PlatformHotkeyConfiguration(KeyModifiers.Control))
                 .Bind<IKeyboardDevice>().ToConstant(new KeyboardDevice())
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
-                .Bind<IClipboard>().ToConstant(new WlClipboard(this))
+                .Bind<IClipboard>().ToConstant(new WlDataHandler(this))
                 //.Bind<IPlatformSettings>().ToConstant(new PlatformSettingsStub())
                 .Bind<IPlatformIconLoader>().ToConstant(new WlIconLoader())
                 //.Bind<ISystemDialogImpl>().ToConstant(new GtkSystemDialog())

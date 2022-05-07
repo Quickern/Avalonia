@@ -34,7 +34,7 @@ namespace Avalonia.Wayland
             _platform = platform;
             platform.XdgWmBase.Events = this;
             _wlScreens = new WlScreens(platform);
-            _wlInputDevice = new WlInputDevice(platform);
+            _wlInputDevice = new WlInputDevice(platform, this);
             _wlSurface = platform.WlCompositor.CreateSurface();
             _wlSurface.Events = this;
             _xdgSurface = platform.XdgWmBase.GetXdgSurface(_wlSurface);
@@ -87,12 +87,7 @@ namespace Avalonia.Wayland
         private readonly List<object> _surfaces;
         public IEnumerable<object> Surfaces => _surfaces;
 
-        public Action<RawInputEventArgs>? Input
-        {
-            get => _wlInputDevice.Input;
-            set => _wlInputDevice.Input = value;
-        }
-
+        public Action<RawInputEventArgs>? Input { get; set; }
         public Action<Rect>? Paint { get; set; }
         public Action<Size, PlatformResizeReason>? Resized { get; set; }
         public Action<double>? ScalingChanged { get; set; }
@@ -122,6 +117,7 @@ namespace Avalonia.Wayland
         public void SetCursor(ICursorImpl? cursor)
         {
             if (cursor is not WlCursorFactory.WlCursor wlCursor) return;
+            _wlInputDevice.SetCursor(wlCursor);
         }
 
         public Action? Closed { get; set; }
