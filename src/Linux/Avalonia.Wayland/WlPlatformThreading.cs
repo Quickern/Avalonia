@@ -31,10 +31,10 @@ namespace Avalonia.Wayland
             while (!cancellationToken.IsCancellationRequested && _platform.WlDisplay.Dispatch() >= 0)
             {
                 var now = clock.Elapsed;
-                TimeSpan? nextTick = null;
+                TimeSpan nextTick = new(-1);
                 foreach (var timer in _timers)
                 {
-                    if (nextTick is null || timer.NextTick < nextTick.Value)
+                    if (nextTick == new TimeSpan(-1) || timer.NextTick < nextTick)
                         nextTick = timer.NextTick;
                     if (timer.NextTick < now)
                         readyTimers.Add(timer);
@@ -48,7 +48,7 @@ namespace Avalonia.Wayland
                         return;
                     t.Tick();
                     t.Reschedule();
-                    if (nextTick == null || t.NextTick < nextTick.Value)
+                    if (nextTick == new TimeSpan(-1) || t.NextTick < nextTick)
                         nextTick = t.NextTick;
                 }
 

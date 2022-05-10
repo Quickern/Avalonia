@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Avalonia.Input;
 using Avalonia.Platform;
-using NWayland.Interop;
 
 namespace Avalonia.Wayland
 {
@@ -14,7 +13,7 @@ namespace Avalonia.Wayland
 
         public WlCursorFactory(AvaloniaWaylandPlatform platform)
         {
-            _theme = LibWayland.wl_cursor_theme_load(null, 32, platform.WlShm.Handle);
+            _theme = LibWaylandCursor.wl_cursor_theme_load(null, 32, platform.WlShm.Handle);
         }
 
         public ICursorImpl GetCursor(StandardCursorType cursorType)
@@ -22,7 +21,7 @@ namespace Avalonia.Wayland
             if (_wlCursorCache.TryGetValue(cursorType, out var wlCursor)) return wlCursor;
             foreach (var name in _standardCurorNames[cursorType])
             {
-                var cursor = LibWayland.wl_cursor_theme_get_cursor(_theme, name);
+                var cursor = LibWaylandCursor.wl_cursor_theme_get_cursor(_theme, name);
                 if (cursor == IntPtr.Zero) continue;
                 wlCursor = new WlCursor(cursor);
                 _wlCursorCache.Add(cursorType, wlCursor);
@@ -67,7 +66,7 @@ namespace Avalonia.Wayland
 
         public void Dispose()
         {
-            LibWayland.wl_cursor_theme_destroy(_theme);
+            LibWaylandCursor.wl_cursor_theme_destroy(_theme);
         }
 
         public sealed class WlCursor : ICursorImpl

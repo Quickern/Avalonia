@@ -8,7 +8,6 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
-using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgDecorationUnstableV1;
 using NWayland.Protocols.XdgShell;
@@ -60,7 +59,7 @@ namespace Avalonia.Wayland
             var glFeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
             if (glFeature is EglPlatformOpenGlInterface egl)
             {
-                var eglWindow = LibWayland.wl_egl_window_create(_wlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
+                var eglWindow = LibWaylandEgl.wl_egl_window_create(_wlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
                 Handle = new PlatformHandle(eglWindow, "EGL_WINDOW");
                 _surfaces.Add(new EglGlPlatformSurface(egl, new SurfaceInfo(this)));
             }
@@ -98,7 +97,7 @@ namespace Avalonia.Wayland
             var loop = AvaloniaLocator.Current.GetService<IRenderLoop>();
             var customRendererFactory = AvaloniaLocator.Current.GetService<IRendererFactory>();
 
-            if (customRendererFactory != null)
+            if (customRendererFactory is not null)
                 return customRendererFactory.Create(root, loop);
 
             return _platform.Options.UseDeferredRendering
@@ -145,7 +144,8 @@ namespace Avalonia.Wayland
 
         public void Hide()
         {
-
+            _wlSurface.Attach(null, 0, 0);
+            _wlSurface.Commit();
         }
 
         public double DesktopScaling => RenderScaling;
@@ -382,7 +382,7 @@ namespace Avalonia.Wayland
             _wlSurface.Dispose();
             _wlScreens.Dispose();
             if (Handle.Handle != IntPtr.Zero)
-                LibWayland.wl_egl_window_destroy(Handle.Handle);
+                LibWaylandEgl.wl_egl_window_destroy(Handle.Handle);
         }
 
         private void ScheduleRedraw() => _wlSurface.Frame().Events = this;
@@ -391,7 +391,7 @@ namespace Avalonia.Wayland
         {
             if (_needsResize)
             {
-                LibWayland.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
+                LibWaylandEgl.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
                 Resized?.Invoke(ClientSize, PlatformResizeReason.User);
                 _needsResize = false;
             }
