@@ -35,7 +35,6 @@ WindowBaseImpl::WindowBaseImpl(IAvnWindowBaseEvents *events, IAvnGlContext *gl) 
     lastSize = NSSize { 100, 100 };
     lastMaxSize = NSSize { CGFLOAT_MAX, CGFLOAT_MAX};
     lastMinSize = NSSize { 0, 0 };
-    _lastTitle = @"";
 
     Window = nullptr;
     lastMenu = nullptr;
@@ -101,8 +100,6 @@ HRESULT WindowBaseImpl::Show(bool activate, bool isDialog) {
         }
 
         UpdateStyle();
-
-        [Window setTitle:_lastTitle];
 
         if (ShouldTakeFocusOnShow() && activate) {
             [Window orderFront:Window];
@@ -299,6 +296,7 @@ HRESULT WindowBaseImpl::Resize(double x, double y, AvnPlatformResizeReason reaso
 
             if(Window != nullptr) {
                 [Window setContentSize:lastSize];
+                [Window invalidateShadow];
             }
         }
         @finally {
@@ -570,6 +568,11 @@ void WindowBaseImpl::CreateNSWindow(bool isDialog) {
     }
 }
 
+void WindowBaseImpl::OnInitialiseNSWindow()
+{
+    
+}
+
 void WindowBaseImpl::InitialiseNSWindow() {
     if(Window != nullptr) {
         [Window setContentView:StandardContainer];
@@ -581,6 +584,8 @@ void WindowBaseImpl::InitialiseNSWindow() {
         [Window setContentMaxSize:lastMaxSize];
 
         [Window setOpaque:false];
+        
+        [Window invalidateShadow];
 
         if (lastMenu != nullptr) {
             [GetWindowProtocol() applyMenu:lastMenu];
@@ -589,6 +594,8 @@ void WindowBaseImpl::InitialiseNSWindow() {
                 [GetWindowProtocol() showWindowMenuWithAppMenu];
             }
         }
+        
+        OnInitialiseNSWindow();
     }
 }
 
