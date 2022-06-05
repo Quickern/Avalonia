@@ -24,11 +24,31 @@ namespace Avalonia.Wayland
             _timers = new List<ManagedThreadingTimer>();
         }
 
-        public void RunLoop(CancellationToken cancellationToken)
+        public unsafe void RunLoop(CancellationToken cancellationToken)
         {
-            var readyTimers = new List<ManagedThreadingTimer>();
-            while (!cancellationToken.IsCancellationRequested && _platform.WlDisplay.DispatchPending() >= 0)
+            var pollFd = new pollfd
             {
+                fd = _platform.WlDisplay.GetFd(),
+                events = NativeMethods.EPOLLIN | NativeMethods.EPOLLHUP
+            };
+
+            var readyTimers = new List<ManagedThreadingTimer>();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                while (_platform.WlDisplay.PrepareRead() != 0)
+                    _platform.WlDisplay.DispatchPending();
+                _platform.WlDisplay.Flush();
+
+                var ret = NativeMethods.poll(&pollFd, new IntPtr(1), -1);
+                if (ret < 0 || cancellationToken.IsCancellationRequested)
+                {
+                    _platform.WlDisplay.CancelRead();
+                    break;
+                }
+
+                if (_platform.WlDisplay.ReadEvents() == -1)
+                    break;
+
                 var now = _clock.Elapsed;
                 TimeSpan nextTick = new(-1);
                 foreach (var timer in _timers)
