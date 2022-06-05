@@ -12,7 +12,11 @@ namespace Avalonia.Wayland
         private readonly Dictionary<uint, WlScreen> _wlScreens = new();
         private readonly Dictionary<WlOutput, WlScreen> _wlOutputs = new();
 
-        public int ScreenCount => AllScreens.Count;
+        public Stack<WlWindow> WlWindows { get; } = new();
+
+        public WlOutput? ActiveOutput { get; set; }
+
+        public int ScreenCount => _wlScreens.Count;
 
         public IReadOnlyList<Screen> AllScreens => _wlScreens.Values.Select(ScreenForWlScreen).ToList();
 

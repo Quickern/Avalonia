@@ -1,6 +1,6 @@
 namespace Avalonia.Wayland
 {
-    public class WlBlur
+    internal class WlBlur
     {
         public WlBlur(AvaloniaWaylandPlatform platform)
         {

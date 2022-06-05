@@ -6,7 +6,7 @@ using Avalonia.Platform;
 
 namespace Avalonia.Wayland
 {
-    public class WlCursorFactory : ICursorFactory, IDisposable
+    internal class WlCursorFactory : ICursorFactory, IDisposable
     {
         private readonly IntPtr _theme;
         private readonly Dictionary<StandardCursorType, WlCursor> _wlCursorCache = new();

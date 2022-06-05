@@ -9,7 +9,7 @@ using Avalonia.Threading;
 
 namespace Avalonia.Wayland
 {
-    public class WlPlatformThreading : IPlatformThreadingInterface
+    internal class WlPlatformThreading : IPlatformThreadingInterface
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly Thread _mainThread;
@@ -26,11 +26,10 @@ namespace Avalonia.Wayland
 
         public void RunLoop(CancellationToken cancellationToken)
         {
-            var clock = Stopwatch.StartNew();
             var readyTimers = new List<ManagedThreadingTimer>();
-            while (!cancellationToken.IsCancellationRequested && _platform.WlDisplay.Dispatch() >= 0)
+            while (!cancellationToken.IsCancellationRequested && _platform.WlDisplay.DispatchPending() >= 0)
             {
-                var now = clock.Elapsed;
+                var now = _clock.Elapsed;
                 TimeSpan nextTick = new(-1);
                 foreach (var timer in _timers)
                 {
@@ -62,7 +61,7 @@ namespace Avalonia.Wayland
         {
             var timer = new ManagedThreadingTimer(_clock, priority, interval, tick);
             _timers.Add(timer);
-            return Disposable.Create(() => _timers.Remove(timer));
+            return Disposable.Create(timer, t => _timers.Remove(t));
         }
 
         public void Signal(DispatcherPriority priority) { }

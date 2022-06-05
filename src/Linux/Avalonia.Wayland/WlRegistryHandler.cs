@@ -6,7 +6,7 @@ using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
 {
-    public class WlRegistryHandler : WlRegistry.IEvents, IDisposable
+    internal class WlRegistryHandler : WlRegistry.IEvents, IDisposable
     {
         private readonly WlRegistry _registry;
         private readonly Dictionary<uint, GlobalInfo> _globals = new();
@@ -33,7 +33,7 @@ namespace Avalonia.Wayland
 
         public void OnGlobal(WlRegistry eventSender, uint name, string @interface, uint version)
         {
-            var global = new GlobalInfo(name, @interface, (int) version);
+            var global = new GlobalInfo(name, @interface, (int)version);
             _globals[name] = global;
             _globalAdded?.Invoke(global);
         }

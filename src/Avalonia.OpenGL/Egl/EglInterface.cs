@@ -154,6 +154,11 @@ namespace Avalonia.OpenGL.Egl
         public EglWaitNative WaitNative { get; }
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate bool EglSwapInterval(IntPtr display, int interval);
+        [GlEntryPoint("eglSwapInterval")]
+        public EglSwapInterval SwapInterval { get; }
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate IntPtr EglQueryString(IntPtr display, int i);
 
         [GlEntryPoint("eglQueryString")]

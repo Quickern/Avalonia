@@ -1,6 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
+using Avalonia.Dialogs;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -17,29 +18,31 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    public class AvaloniaWaylandPlatform : IWindowingPlatform
+    internal class AvaloniaWaylandPlatform : IWindowingPlatform
     {
-        public WaylandPlatformOptions Options { get; private set; }
+        internal WaylandPlatformOptions Options { get; private set; }
 
-        public WlDisplay WlDisplay { get; private set; }
+        internal WlDisplay WlDisplay { get; private set; }
 
-        public WlRegistryHandler WlRegistryHandler { get; private set; }
+        internal WlRegistryHandler WlRegistryHandler { get; private set; }
 
-        public WlCompositor WlCompositor { get; private set; }
+        internal WlCompositor WlCompositor { get; private set; }
 
-        public WlSeat WlSeat { get; private set; }
+        internal WlSeat WlSeat { get; private set; }
 
-        public WlShm WlShm { get; private set; }
+        internal WlShm WlShm { get; private set; }
 
-        public WlDataDeviceManager WlDataDeviceManager { get; private set; }
+        internal WlDataDeviceManager WlDataDeviceManager { get; private set; }
 
-        public XdgWmBase XdgWmBase { get; private set; }
+        internal XdgWmBase XdgWmBase { get; private set; }
 
-        public XdgActivationV1 XdgActivation { get; private set; }
+        internal XdgActivationV1 XdgActivation { get; private set; }
 
-        public ZxdgDecorationManagerV1 ZxdgDecorationManager { get; private set; }
+        internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; private set; }
 
-        public ZxdgOutputManagerV1 ZxdgOutputManager { get; private set; }
+        internal ZxdgOutputManagerV1 ZxdgOutputManager { get; private set; }
+
+        internal WlScreens WlScreens { get; private set; }
 
         public void Initialize(WaylandPlatformOptions options)
         {
@@ -56,6 +59,7 @@ namespace Avalonia.Wayland
             XdgActivation = WlRegistryHandler.Bind(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgOutputManager = WlRegistryHandler.Bind(ZxdgOutputManagerV1.BindFactory, ZxdgOutputManagerV1.InterfaceName, ZxdgOutputManagerV1.InterfaceVersion);
+            WlScreens = new WlScreens(this);
 
             AvaloniaLocator.CurrentMutable.BindToSelf(this)
                 .Bind<IWindowingPlatform>().ToConstant(this)
@@ -68,7 +72,7 @@ namespace Avalonia.Wayland
                 .Bind<IClipboard>().ToConstant(new WlDataHandler(this))
                 //.Bind<IPlatformSettings>().ToConstant(new PlatformSettingsStub())
                 .Bind<IPlatformIconLoader>().ToConstant(new WlIconLoader())
-                //.Bind<ISystemDialogImpl>().ToConstant(new GtkSystemDialog())
+                .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
                 //.Bind<IPlatformLifetimeEventsImpl>().ToConstant();
 
@@ -132,8 +136,8 @@ namespace Avalonia
 
         /// <summary>
         /// Enables global menu support on Linux desktop environments where it's supported (e. g. XFCE and MATE with plugin, KDE, etc).
-        /// The default value is false.
+        /// The default value is true.
         /// </summary>
-        public bool UseDBusMenu { get; set; }
+        public bool UseDBusMenu { get; set; } = true;
     }
 }

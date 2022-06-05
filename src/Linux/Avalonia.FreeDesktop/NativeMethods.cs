@@ -12,6 +12,8 @@ namespace Avalonia.FreeDesktop
         private const string EvDev = "libevdev.so.2";
 
         public const int EPOLLIN = 1;
+        public const int EPOLLERR = 8;
+        public const int EPOLLHUP = 10;
         public const int EPOLL_CTL_ADD = 1;
 
         [DllImport(C, SetLastError = true)]
@@ -24,6 +26,15 @@ namespace Avalonia.FreeDesktop
 
         [DllImport(C, SetLastError = true)]
         public static extern int close(int fd);
+
+        [DllImport(C, SetLastError = true)]
+        public static extern int read(int fd, IntPtr buffer, int count);
+
+        [DllImport(C, SetLastError = true)]
+        public static extern int write(int fd, IntPtr buffer, int count);
+
+        [DllImport(C, SetLastError = true)]
+        public static extern int pipe(int[] fds);
 
         [DllImport(C, SetLastError = true)]
         public static extern unsafe int ioctl(int fd, FbIoCtl code, void* arg);

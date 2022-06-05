@@ -4,7 +4,7 @@ using Avalonia.Platform;
 
 namespace Avalonia.Wayland
 {
-    public class WlFramebufferSurface : IFramebufferPlatformSurface
+    internal class WlFramebufferSurface : IFramebufferPlatformSurface
     {
         public ILockedFramebuffer Lock()
         {

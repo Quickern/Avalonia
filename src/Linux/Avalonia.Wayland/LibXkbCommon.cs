@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Avalonia.Wayland
 {
-    public static class LibXkbCommon
+    internal static class LibXkbCommon
     {
         private const string XkbCommon = "libxkbcommon.so.0";
 

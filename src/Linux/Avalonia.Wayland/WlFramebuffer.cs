@@ -3,7 +3,7 @@ using Avalonia.Platform;
 
 namespace Avalonia.Wayland
 {
-    public class WlFramebuffer : ILockedFramebuffer
+    internal class WlFramebuffer : ILockedFramebuffer
     {
         public void Dispose()
         {

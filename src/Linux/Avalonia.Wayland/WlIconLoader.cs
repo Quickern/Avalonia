@@ -5,8 +5,7 @@ using Avalonia.Platform;
 
 namespace Avalonia.Wayland
 {
-    // 
-    public class WlIconLoader : IPlatformIconLoader
+    internal class WlIconLoader : IPlatformIconLoader
     {
         public IWindowIconImpl LoadIcon(string fileName) => null;
 

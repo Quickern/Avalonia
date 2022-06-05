@@ -5,11 +5,12 @@ using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
 {
-    public class WlInputDevice : WlSeat.IEvents, WlPointer.IEvents, WlKeyboard.IEvents, WlTouch.IEvents, IDisposable
+    internal class WlInputDevice : WlSeat.IEvents, WlPointer.IEvents, WlKeyboard.IEvents, WlTouch.IEvents, IDisposable
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly ITopLevelImpl _topLevelImpl;
@@ -55,9 +56,11 @@ namespace Avalonia.Wayland
 
         public IInputRoot InputRoot { get; set; }
 
-        public uint LastSerial { get; private set; }
+        public uint Serial { get; private set; }
 
-        public uint LastPointerSurfaceSerial { get; private set; }
+        public uint PointerSurfaceSerial { get; private set; }
+
+        public uint KeyboardEnterSerial { get; private set; }
 
         public void SetCursor(WlCursorFactory.WlCursor wlCursor)
         {
@@ -91,30 +94,30 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
         {
-            LastPointerSurfaceSerial = serial;
+            PointerSurfaceSerial = serial;
             _pointerPosition = new Point(surfaceX / 256d, surfaceY / 256d);
         }
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
-            LastPointerSurfaceSerial = serial;
+            PointerSurfaceSerial = serial;
             _topLevelImpl.Input?.Invoke(new RawPointerEventArgs(MouseDevice!, 0, InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, _modifiers));
         }
 
         public void OnMotion(WlPointer eventSender, uint time, int surfaceX, int surfaceY)
         {
-            _pointerPosition = new Point(surfaceX / 256d, surfaceY / 256d);
+            _pointerPosition = new Point(LibWayland.WlFixedToInt(surfaceX), LibWayland.WlFixedToInt(surfaceY));
             _topLevelImpl.Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, RawPointerEventType.Move, _pointerPosition, _modifiers));
         }
 
         public void OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
         {
-            LastSerial = serial;
+            Serial = serial;
             _topLevelImpl.Input?.Invoke(new RawPointerEventArgs(MouseDevice!, time, InputRoot, ProcessButton(button, state), _pointerPosition, _modifiers));
         }
 
         public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, int value)
-            => _topLevelImpl.Input?.Invoke(new RawMouseWheelEventArgs(MouseDevice!, time, InputRoot, _pointerPosition, GetVectorForAxis(axis, value / 512d), _modifiers));
+            => _topLevelImpl.Input?.Invoke(new RawMouseWheelEventArgs(MouseDevice!, time, InputRoot, _pointerPosition, GetVectorForAxis(axis, LibWayland.WlFixedToInt(value)), _modifiers));
 
         public void OnFrame(WlPointer eventSender) { }
 
@@ -161,17 +164,18 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
         {
-            LastSerial = serial;
+            Serial = serial;
+            KeyboardEnterSerial = serial;
         }
 
         public void OnLeave(WlKeyboard eventSender, uint serial, WlSurface surface)
         {
-            LastSerial = serial;
+            Serial = serial;
         }
 
         public unsafe void OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
         {
-            LastSerial = serial;
+            Serial = serial;
             var code = key + 8;
             uint* syms;
             var numSyms = LibXkbCommon.xkb_state_key_get_syms(_xkbState, code, &syms);
@@ -205,7 +209,7 @@ namespace Avalonia.Wayland
 
         public void OnModifiers(WlKeyboard eventSender, uint serial, uint modsDepressed, uint modsLatched, uint modsLocked, uint group)
         {
-            LastSerial = serial;
+            Serial = serial;
             LibXkbCommon.xkb_state_update_mask(_xkbState, modsDepressed, modsLatched, modsLocked, 0, 0, group);
             var mask = LibXkbCommon.xkb_state_serialize_mods(_xkbState, LibXkbCommon.XkbStateComponent.XKB_STATE_MODS_EFFECTIVE);
             _modifiers = RawInputModifiers.None;
@@ -227,12 +231,12 @@ namespace Avalonia.Wayland
 
         public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, int x, int y)
         {
-            LastSerial = serial;
+            Serial = serial;
         }
 
         public void OnUp(WlTouch eventSender, uint serial, uint time, int id)
         {
-            LastSerial = serial;
+            Serial = serial;
         }
 
         public void OnMotion(WlTouch eventSender, uint time, int id, int x, int y)

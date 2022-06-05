@@ -2,7 +2,7 @@ using Avalonia.Controls.Primitives.PopupPositioning;
 
 namespace Avalonia.Wayland
 {
-    public class WlPopupPositioner : IPopupPositioner
+    internal class WlPopupPositioner : IPopupPositioner
     {
         public WlPopupPositioner()
         {
