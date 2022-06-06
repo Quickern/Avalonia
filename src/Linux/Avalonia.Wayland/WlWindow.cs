@@ -330,10 +330,7 @@ namespace Avalonia.Wayland
             }
 
             var size = new Size(width, height);
-            if (size == Size.Empty)
-                return;
-
-            Resized.Invoke(size * RenderScaling, PlatformResizeReason.User);
+            Resize(size, PlatformResizeReason.User);
         }
 
         public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)

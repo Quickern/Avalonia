@@ -69,7 +69,7 @@ namespace Avalonia.Wayland
                 .Bind<PlatformHotkeyConfiguration>().ToConstant(new PlatformHotkeyConfiguration(KeyModifiers.Control))
                 .Bind<IKeyboardDevice>().ToConstant(new KeyboardDevice())
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
-                .Bind<IClipboard>().ToConstant(new WlDataHandler(this))
+                .Bind<IClipboard>().ToLazy<IClipboard>(() => new WlDataHandler(this))
                 //.Bind<IPlatformSettings>().ToConstant(new PlatformSettingsStub())
                 .Bind<IPlatformIconLoader>().ToConstant(new WlIconLoader())
                 .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())

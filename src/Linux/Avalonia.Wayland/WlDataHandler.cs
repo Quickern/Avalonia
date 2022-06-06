@@ -15,16 +15,18 @@ namespace Avalonia.Wayland
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlDataDevice _wlDataDevice;
-        private readonly WlDataDevicehandler _wlDataDevicehandler;
+        private readonly WlDataDevicehandler _wlDataDeviceHandler;
         private readonly IDragDropDevice _dragDropDevice;
+
+        private WlDataSourceHandler? _currentDataSourceHandler;
 
         public WlDataHandler(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             _wlDataDevice = platform.WlDataDeviceManager.GetDataDevice(platform.WlSeat);
-            _wlDataDevicehandler = new WlDataDevicehandler();
-            _wlDataDevice.Events = _wlDataDevicehandler;
-            _dragDropDevice = AvaloniaLocator.Current.GetService<IDragDropDevice>();
+            _wlDataDeviceHandler = new WlDataDevicehandler();
+            _wlDataDevice.Events = _wlDataDeviceHandler;
+            _dragDropDevice = AvaloniaLocator.Current.GetService<IDragDropDevice>()!;
         }
 
         private class WlDataDevicehandler : IDisposable, WlDataDevice.IEvents
@@ -57,7 +59,11 @@ namespace Avalonia.Wayland
                 throw new NotImplementedException();
             }
 
-            public void OnSelection(WlDataDevice eventSender, WlDataOffer id) { }
+            public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
+            {
+                if (id is null)
+                    CurrentOffer?.Dispose();
+            }
 
             public void Dispose() => CurrentOffer?.Dispose();
         }
@@ -96,7 +102,6 @@ namespace Avalonia.Wayland
 
                 WlDataOffer.Receive(mimeType, fds[1]);
                 NativeMethods.close(fds[1]);
-                WlDataOffer.Display.Roundtrip();
                 return fds[0];
             }
 
@@ -128,14 +133,16 @@ namespace Avalonia.Wayland
                 switch (mimeType)
                 {
                     case "text/plain":
-                        var bytes = Encoding.UTF8.GetBytes(Text!);
+                        /*var bytes = Encoding.UTF8.GetBytes(Text!);
                         fixed (byte* ptr = bytes)
+                            NativeMethods.write(fd, (IntPtr)ptr, Text!.Length);*/
+                        fixed (char* ptr = Text)
                             NativeMethods.write(fd, (IntPtr)ptr, Text!.Length);
                         break;
                     case "text/uri-list":
                         foreach (var uri in Uris!)
                         {
-                            bytes = Encoding.UTF8.GetBytes(uri);
+                            var bytes = Encoding.UTF8.GetBytes(uri);
                             fixed (byte* ptr = bytes)
                                 NativeMethods.write(fd, (IntPtr)ptr, uri.Length);
                         }
@@ -171,8 +178,8 @@ namespace Avalonia.Wayland
                 return Task.CompletedTask;
             var window = _platform.WlScreens.WlWindows.Peek();
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            var dataSourceHandler = new WlDataSourceHandler(dataSource) { Text = text };
-            dataSource.Events = dataSourceHandler;
+            _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Text = text };
+            dataSource.Events = _currentDataSourceHandler;
             dataSource.Offer("text/plain");
             _wlDataDevice.SetSelection(dataSource, window.WlInputDevice.KeyboardEnterSerial);
             return Task.CompletedTask;
@@ -192,8 +199,10 @@ namespace Avalonia.Wayland
             throw new NotImplementedException();
         }
 
-        public Task<string[]?> GetFormatsAsync() =>
-            _wlDataDevicehandler.CurrentOffer is null ? Task.FromResult<string[]?>(null) : Task.FromResult(_wlDataDevicehandler.CurrentOffer.MimeTypes.ToArray());
+        public Task<string[]> GetFormatsAsync() =>
+            _wlDataDeviceHandler.CurrentOffer is null
+                ? Task.FromResult(Array.Empty<string>())
+                : Task.FromResult(_wlDataDeviceHandler.CurrentOffer.MimeTypes.ToArray());
 
         public Task<object?> GetDataAsync(string format) =>
             format switch
@@ -215,7 +224,7 @@ namespace Avalonia.Wayland
 
         private unsafe string? GetText()
         {
-            var offer = _wlDataDevicehandler.CurrentOffer;
+            var offer = _wlDataDeviceHandler.CurrentOffer;
             if (offer is null)
                 return null;
 
@@ -237,7 +246,7 @@ namespace Avalonia.Wayland
 
         private unsafe List<string>? GetUris()
         {
-            var offer = _wlDataDevicehandler.CurrentOffer;
+            var offer = _wlDataDeviceHandler.CurrentOffer;
             if (offer is null)
                 return null;
 
@@ -259,7 +268,7 @@ namespace Avalonia.Wayland
 
         private unsafe object? GetObject()
         {
-            var offer = _wlDataDevicehandler.CurrentOffer;
+            var offer = _wlDataDeviceHandler.CurrentOffer;
             if (offer is null || offer.MimeTypes.Count <= 0)
                 return null;
 

@@ -40,7 +40,7 @@ namespace Avalonia.Wayland
                 _platform.WlDisplay.Flush();
 
                 var ret = NativeMethods.poll(&pollFd, new IntPtr(1), -1);
-                if (ret < 0 || cancellationToken.IsCancellationRequested)
+                if (cancellationToken.IsCancellationRequested || ret < 0)
                 {
                     _platform.WlDisplay.CancelRead();
                     break;

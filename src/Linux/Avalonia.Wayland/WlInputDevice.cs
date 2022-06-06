@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Timers;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
@@ -95,7 +96,7 @@ namespace Avalonia.Wayland
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
         {
             PointerSurfaceSerial = serial;
-            _pointerPosition = new Point(surfaceX / 256d, surfaceY / 256d);
+            _pointerPosition = new Point(LibWayland.WlFixedToInt(surfaceX), LibWayland.WlFixedToInt(surfaceY));
         }
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
@@ -183,7 +184,7 @@ namespace Avalonia.Wayland
             if (sym == 0)
                 return;
             _currentKey = XkbKeyTransform.ConvertKey((XkbKey)sym);
-            _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, ProcessKeyState(state), _currentKey, _modifiers));
+            _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, KeyStateToRawKeyEventType(state), _currentKey, _modifiers));
             if (state == WlKeyboard.KeyStateEnum.Released && _repeatSym == sym)
             {
                 _timer.Stop();
@@ -191,14 +192,16 @@ namespace Avalonia.Wayland
             }
             else if (state == WlKeyboard.KeyStateEnum.Pressed)
             {
-                var chars = stackalloc char[16];
-                if (LibXkbCommon.xkb_keysym_to_utf8(sym, chars, sizeof(char) * 16) > 0)
+                var chars = stackalloc byte[16];
+                if (LibXkbCommon.xkb_keysym_to_utf8(sym, (IntPtr)chars, sizeof(byte) * 16) > 0)
                 {
-                    _currentText = new string(chars);
+                    _currentText = Encoding.UTF8.GetString(chars, 16);
                     _topLevelImpl.Input?.Invoke(new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, _currentText));
                 }
+
                 if (!LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code))
                     return;
+
                 _repeatSym = sym;
                 _repeatTime = time;
                 _firstRepeat = true;
@@ -293,7 +296,7 @@ namespace Avalonia.Wayland
                     _ => RawPointerEventType.NonClientLeftButtonDown
                 };
 
-        private static RawKeyEventType ProcessKeyState(WlKeyboard.KeyStateEnum keyState)
+        private static RawKeyEventType KeyStateToRawKeyEventType(WlKeyboard.KeyStateEnum keyState)
             => keyState switch
             {
                 WlKeyboard.KeyStateEnum.Pressed => RawKeyEventType.KeyDown,
