@@ -15,18 +15,16 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal class WlWindow : IWindowImpl, WlSurface.IEvents, WlCallback.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, ZxdgToplevelDecorationV1.IEvents
+    internal class WlWindow : IWindowImpl, WlSurface.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, ZxdgToplevelDecorationV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlSurface _wlSurface;
         private readonly XdgSurface _xdgSurface;
         private readonly XdgToplevel _xdgToplevel;
         private readonly ZxdgToplevelDecorationV1 _toplevelDecoration;
-        private readonly EglDisplay? _eglDisplay;
 
         private bool _active;
-
-        internal WlInputDevice WlInputDevice;
+        private WlOutput _wlOutput;
 
         public WlWindow(AvaloniaWaylandPlatform platform, IWindowImpl? popupParent)
         {
@@ -40,7 +38,6 @@ namespace Avalonia.Wayland
             _xdgToplevel = _xdgSurface.GetToplevel();
             _xdgToplevel.Events = this;
             _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
-            platform.WlScreens.WlWindows.Push(this);
 
             if (popupParent is not null)
                 SetParent(popupParent);
@@ -59,7 +56,6 @@ namespace Avalonia.Wayland
             var glFeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
             if (glFeature is EglPlatformOpenGlInterface egl)
             {
-                _eglDisplay = egl.Display;
                 var eglWindow = LibWaylandEgl.wl_egl_window_create(_wlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
                 Handle = new PlatformHandle(eglWindow, "EGL_WINDOW");
                 _surfaces.Add(new EglGlPlatformSurface(egl, new SurfaceInfo(this)));
@@ -79,6 +75,8 @@ namespace Avalonia.Wayland
             public PixelSize Size => new((int)_wlWindow.ClientSize.Width, (int)_wlWindow.ClientSize.Height);
             public double Scaling => _wlWindow.RenderScaling;
         }
+
+        internal WlInputDevice WlInputDevice { get; }
 
         public Size ClientSize { get; private set; }
         public Size? FrameSize { get; }
@@ -188,7 +186,7 @@ namespace Avalonia.Wayland
                         _xdgToplevel.SetMaximized();
                         break;
                     case WindowState.FullScreen:
-                        _xdgToplevel.SetFullscreen(_platform.WlScreens.ActiveOutput);
+                        _xdgToplevel.SetFullscreen(_wlOutput);
                         break;
                     case WindowState.Normal:
                         if (_windowState == WindowState.Maximized)
@@ -270,6 +268,7 @@ namespace Avalonia.Wayland
             ClientSize = clientSize;
             LibWaylandEgl.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
             Resized.Invoke(ClientSize, reason);
+            Redraw();
         }
 
         public void Move(PixelPoint point) { }
@@ -343,17 +342,11 @@ namespace Avalonia.Wayland
 
         public void OnClose(XdgToplevel eventSender)
         {
-            if (Closing?.Invoke() is not true)
-                Closed?.Invoke();
+            if (Closing?.Invoke() is true) return;
+            Closed?.Invoke();
         }
 
         public void OnConfigureBounds(XdgToplevel eventSender, int width, int height) { }
-
-        public void OnDone(WlCallback eventSender, uint callbackData)
-        {
-            Redraw();
-            ScheduleRedraw();
-        }
 
         public void OnConfigure(XdgSurface eventSender, uint serial) => _xdgSurface.AckConfigure(serial);
 
@@ -361,7 +354,8 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
         {
-            _platform.WlScreens.ActiveOutput = output;
+            _wlOutput = output;
+            _platform.WlScreens.ActiveWindow = this;
             var screen = _platform.WlScreens.ScreenFromOutput(output);
             if (MathUtilities.AreClose(screen.PixelDensity, RenderScaling)) return;
             RenderScaling = screen.PixelDensity;
@@ -379,11 +373,8 @@ namespace Avalonia.Wayland
             LibWaylandEgl.wl_egl_window_destroy(Handle.Handle);
         }
 
-        private void ScheduleRedraw() => _wlSurface.Frame().Events = this;
-
         private void Redraw()
         {
-            _eglDisplay?.EglInterface.SwapInterval(_eglDisplay.Handle, 0);
             Paint.Invoke(Rect.Empty);
         }
 

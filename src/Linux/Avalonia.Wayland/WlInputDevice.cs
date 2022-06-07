@@ -308,6 +308,7 @@ namespace Avalonia.Wayland
 
         public void Dispose()
         {
+            _timer.Elapsed -= OnRepeatKey;
             _timer.Dispose();
             _wlPointer?.Dispose();
             _wlKeyboard?.Dispose();

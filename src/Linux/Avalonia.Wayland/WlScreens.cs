@@ -12,9 +12,7 @@ namespace Avalonia.Wayland
         private readonly Dictionary<uint, WlScreen> _wlScreens = new();
         private readonly Dictionary<WlOutput, WlScreen> _wlOutputs = new();
 
-        public Stack<WlWindow> WlWindows { get; } = new();
-
-        public WlOutput? ActiveOutput { get; set; }
+        public WlWindow? ActiveWindow { get; set; }
 
         public int ScreenCount => _wlScreens.Count;
 
@@ -56,7 +54,7 @@ namespace Avalonia.Wayland
 
         private void OnGlobalRemoved(WlRegistryHandler.GlobalInfo globalInfo)
         {
-            if (globalInfo.Interface != WlOutput.InterfaceName) return;
+            if (globalInfo.Interface is not WlOutput.InterfaceName) return;
             if (!_wlScreens.TryGetValue(globalInfo.Name, out var wlScreen)) return;
             _wlScreens.Remove(globalInfo.Name);
             _wlOutputs.Remove(wlScreen.WlOutput);
@@ -104,10 +102,7 @@ namespace Avalonia.Wayland
 
             public void OnDone(WlOutput eventSender) { }
 
-            public void Dispose()
-            {
-                WlOutput.Dispose();
-            }
+            public void Dispose() => WlOutput.Dispose();
         }
     }
 }

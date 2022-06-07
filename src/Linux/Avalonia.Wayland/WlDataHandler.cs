@@ -174,9 +174,10 @@ namespace Avalonia.Wayland
 
         public Task SetTextAsync(string text)
         {
-            if (_platform.WlScreens.WlWindows.Count <= 0)
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window is null)
                 return Task.CompletedTask;
-            var window = _platform.WlScreens.WlWindows.Peek();
+
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
             _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Text = text };
             dataSource.Events = _currentDataSourceHandler;
@@ -187,9 +188,10 @@ namespace Avalonia.Wayland
 
         public Task ClearAsync()
         {
-            if (_platform.WlScreens.WlWindows.Count <= 0)
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window is null)
                 return Task.CompletedTask;
-            var window = _platform.WlScreens.WlWindows.Peek();
+
             _wlDataDevice.SetSelection(null, window.WlInputDevice.KeyboardEnterSerial);
             return Task.CompletedTask;
         }
