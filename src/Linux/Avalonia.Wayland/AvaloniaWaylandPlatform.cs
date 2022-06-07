@@ -71,7 +71,7 @@ namespace Avalonia.Wayland
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
                 .Bind<IClipboard>().ToLazy<IClipboard>(() => new WlDataHandler(this))
                 //.Bind<IPlatformSettings>().ToConstant(new PlatformSettingsStub())
-                .Bind<IPlatformIconLoader>().ToConstant(new WlIconLoader())
+                .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
                 .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
                 //.Bind<IPlatformLifetimeEventsImpl>().ToConstant();
