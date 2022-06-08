@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia.FreeDesktop;
@@ -61,8 +62,9 @@ namespace Avalonia.Wayland
 
             public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
             {
-                if (id is null)
-                    CurrentOffer?.Dispose();
+                if (id is not null) return;
+                CurrentOffer?.Dispose();
+                CurrentOffer = null;
             }
 
             public void Dispose() => CurrentOffer?.Dispose();
@@ -101,6 +103,7 @@ namespace Avalonia.Wayland
                 }
 
                 WlDataOffer.Receive(mimeType, fds[1]);
+                WlDataOffer.Display.Flush();
                 NativeMethods.close(fds[1]);
                 return fds[0];
             }
@@ -130,24 +133,16 @@ namespace Avalonia.Wayland
 
             public unsafe void OnSend(WlDataSource eventSender, string mimeType, int fd)
             {
-                switch (mimeType)
+                var content = mimeType switch
                 {
-                    case "text/plain":
-                        /*var bytes = Encoding.UTF8.GetBytes(Text!);
-                        fixed (byte* ptr = bytes)
-                            NativeMethods.write(fd, (IntPtr)ptr, Text!.Length);*/
-                        fixed (char* ptr = Text)
-                            NativeMethods.write(fd, (IntPtr)ptr, Text!.Length);
-                        break;
-                    case "text/uri-list":
-                        foreach (var uri in Uris!)
-                        {
-                            var bytes = Encoding.UTF8.GetBytes(uri);
-                            fixed (byte* ptr = bytes)
-                                NativeMethods.write(fd, (IntPtr)ptr, uri.Length);
-                        }
-                        break;
-                }
+                    "text/plain" when Text is not null => Encoding.ASCII.GetBytes(Text),
+                    "text/uri-list" when Uris is not null => Uris.SelectMany(Encoding.UTF8.GetBytes).ToArray(),
+                    _ => null
+                };
+
+                if (content is not null)
+                    fixed (byte* ptr = content)
+                        NativeMethods.write(fd, (IntPtr)ptr, content.Length);
 
                 NativeMethods.close(fd);
             }
@@ -227,7 +222,7 @@ namespace Avalonia.Wayland
         private unsafe string? GetText()
         {
             var offer = _wlDataDeviceHandler.CurrentOffer;
-            if (offer is null)
+            if (offer?.MimeTypes.Contains("text/plain") is not true)
                 return null;
 
             var fd = offer.Receive("text/plain");
@@ -249,7 +244,8 @@ namespace Avalonia.Wayland
         private unsafe List<string>? GetUris()
         {
             var offer = _wlDataDeviceHandler.CurrentOffer;
-            if (offer is null)
+
+            if (offer?.MimeTypes.Contains("text/uri-list") is not true)
                 return null;
 
             var fd = offer.Receive("text/uri-list");
@@ -289,271 +285,5 @@ namespace Avalonia.Wayland
             NativeMethods.close(fd);
             return ms.ToArray();
         }
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        /*private readonly AvaloniaWaylandPlatform _platform;
-        private readonly WlDataDevice _wlDataDevice;
-        private readonly IDragDropDevice _dragDropDevice;
-
-        private WlDataOffer? _lastWlDataOffer;
-        private List<string> _mimeTypes;
-        private IDataObject? _dataObject;
-        private string? _text;
-
-        public WlDataHandler(AvaloniaWaylandPlatform platform)
-        {
-            _platform = platform;
-            _dragDropDevice = AvaloniaLocator.Current.GetService<IDragDropDevice>();
-            _wlDataDevice = platform.WlDataDeviceManager.GetDataDevice(platform.WlSeat);
-            _wlDataDevice.Events = this;
-            _mimeTypes = new List<string>();
-        }
-
-        public Task<string?> GetTextAsync() => Task.FromResult(GetText());
-
-        public Task SetTextAsync(string text)
-        {
-            if (_platform.WlScreens.WlWindows.Count == 0)
-                return Task.CompletedTask;
-            var window = _platform.WlScreens.WlWindows.Peek();
-            var wlDataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            wlDataSource.Events = this;
-            wlDataSource.Offer("text/plain");
-            _wlDataDevice.SetSelection(wlDataSource, window.WlInputDevice.KeyboardEnterSerial);
-            return Task.CompletedTask;
-        }
-
-        public Task ClearAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task SetDataObjectAsync(IDataObject data)
-        {
-            if (_platform.WlScreens.WlWindows.Count == 0)
-                return Task.CompletedTask;
-            var window = _platform.WlScreens.WlWindows.Peek();
-            _mimeTypes.Clear();
-            var wlDataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            wlDataSource.Events = this;
-            foreach (var format in data.GetDataFormats())
-            {
-                _mimeTypes.Add(format);
-                switch (format)
-                {
-                    case DataFormats.Text:
-                        wlDataSource.Offer("text/plain");
-                        break;
-                    case DataFormats.FileNames:
-                        wlDataSource.Offer("text/uri-list");
-                        break;
-                    default:
-                        wlDataSource.Offer(format);
-                        break;
-                }
-            }
-
-            _wlDataDevice.SetSelection(wlDataSource, window.WlInputDevice.KeyboardEnterSerial);
-            return Task.CompletedTask;
-        }
-
-        public Task<string[]> GetFormatsAsync()
-            => Task.FromResult(_mimeTypes.ToArray());
-
-        public Task<object?> GetDataAsync(string format) => format switch
-        {
-            DataFormats.Text => Task.FromResult<object?>(GetText()),
-            DataFormats.FileNames => Task.FromResult<object?>(GetUris()),
-            _ => Task.FromResult<object?>(GetByteArray())
-        };
-
-        public void OnDataOffer(WlDataDevice eventSender, WlDataOffer id)
-        {
-            _lastWlDataOffer?.Dispose();
-            _mimeTypes.Clear();
-            _lastWlDataOffer = id;
-            _lastWlDataOffer.Events = this;
-        }
-
-        public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, int x, int y, WlDataOffer id)
-        {
-            
-        }
-
-        public void OnLeave(WlDataDevice eventSender)
-        {
-            
-        }
-
-        public void OnMotion(WlDataDevice eventSender, uint time, int x, int y)
-        {
-            
-        }
-
-        public void OnDrop(WlDataDevice eventSender)
-        {
-            
-        }
-
-        public void OnSelection(WlDataDevice eventSender, WlDataOffer id)
-        {
-            _lastWlDataOffer?.Dispose();
-            
-        }
-
-        public void OnTarget(WlDataSource eventSender, string mimeType)
-        {
-            
-        }
-
-        public unsafe void OnSend(WlDataSource eventSender, string mimeType, int fd)
-        {
-            if (!_mimeTypes.Contains(mimeType))
-            {
-                NativeMethods.close(fd);
-                return;
-            }
-
-            switch (mimeType)
-            {
-                case "text/plain":
-                    var text = _text ?? _dataObject?.GetText();
-                    if (text is null)
-                        break;
-                    var bytes = Encoding.UTF8.GetBytes(text);
-                    fixed (byte* ptr = bytes)
-                        NativeMethods.write(fd, (IntPtr)ptr, bytes.Length);
-                    break;
-                case "text/uri-list":
-                    var uris = _dataObject?.GetFileNames();
-                    if (uris is null)
-                        break;
-                    foreach (var uri in uris.Where(static uri => uri is not null))
-                    {
-                        bytes = Encoding.UTF8.GetBytes(uri);
-                        fixed (byte* ptr = bytes)
-                            NativeMethods.write(fd, (IntPtr)ptr, bytes.Length);
-                    }
-                    break;
-            }
-
-            NativeMethods.close(fd);
-        }
-
-        public void OnCancelled(WlDataSource eventSender) => eventSender.Dispose();
-
-        public void OnDndDropPerformed(WlDataSource eventSender)
-        {
-            
-        }
-
-        public void OnDndFinished(WlDataSource eventSender)
-        {
-            
-        }
-
-        public void OnAction(WlDataSource eventSender, WlDataDeviceManager.DndActionEnum dndAction)
-        {
-            
-        }
-
-        public void OnOffer(WlDataOffer eventSender, string mimeType) => _mimeTypes.Add(mimeType);
-
-        public void OnSourceActions(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum sourceActions)
-        {
-            
-        }
-
-        public void OnAction(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum dndAction)
-        {
-            
-        }
-
-        private unsafe string? GetText()
-        {
-            if (_lastWlDataOffer is null)
-                return null;
-
-            var fds = new int[2];
-            if (NativeMethods.pipe(fds) < 0)
-                _lastWlDataOffer.Dispose();
-
-            _lastWlDataOffer.Receive("text/plain", fds[1]);
-            NativeMethods.close(fds[1]);
-            _platform.WlDisplay.Roundtrip();
-
-            Span<byte> buffer = stackalloc byte[1024];
-            var sb = new StringBuilder();
-            fixed (byte* ptr = buffer)
-            {
-                while (NativeMethods.read(fds[0], (IntPtr)ptr, 1024) > 0)
-                    sb.Append(Encoding.UTF8.GetString(ptr, 1024));
-            }
-
-            NativeMethods.close(fds[0]);
-            return sb.ToString();
-        }
-
-        private unsafe List<string>? GetUris()
-        {
-            if (_lastWlDataOffer is null)
-                return null;
-
-            var fds = new int[2];
-            if (NativeMethods.pipe(fds) < 0)
-                _lastWlDataOffer.Dispose();
-
-            _lastWlDataOffer.Receive("text/uri-list", fds[1]);
-            NativeMethods.close(fds[1]);
-            _platform.WlDisplay.Roundtrip();
-
-            Span<byte> buffer = stackalloc byte[1024];
-            var uris = new List<string>();
-            fixed (byte* ptr = buffer)
-            {
-                while (NativeMethods.read(fds[0], (IntPtr)ptr, 1024) > 0)
-                    uris.Add(Encoding.UTF8.GetString(ptr, 1024));
-            }
-
-            NativeMethods.close(fds[0]);
-            return uris;
-        }
-
-        private unsafe byte[]? GetByteArray()
-        {
-            if (_lastWlDataOffer is null || _mimeTypes.Count <= 0)
-                return null;
-
-            var fds = new int[2];
-            if (NativeMethods.pipe(fds) < 0)
-                _lastWlDataOffer.Dispose();
-
-            _lastWlDataOffer.Receive(_mimeTypes[0], fds[1]);
-            NativeMethods.close(fds[1]);
-            _platform.WlDisplay.Roundtrip();
-
-            var buffer = new byte[1024];
-            var ms = new MemoryStream();
-            fixed (byte* ptr = buffer)
-            {
-                while (NativeMethods.read(fds[0], (IntPtr)ptr, 1024) > 0)
-                    ms.Write(buffer, 0, 1024);
-            }
-
-            NativeMethods.close(fds[0]);
-            return ms.ToArray();
-        }*/
     }
 }

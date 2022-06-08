@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Input;
@@ -24,13 +25,12 @@ namespace Avalonia.Wayland
         private readonly ZxdgToplevelDecorationV1 _toplevelDecoration;
 
         private bool _active;
+        private WindowState _prevWindowState;
         private WlOutput _wlOutput;
 
         public WlWindow(AvaloniaWaylandPlatform platform, IWindowImpl? popupParent)
         {
             _platform = platform;
-            platform.XdgWmBase.Events = this;
-            WlInputDevice = new WlInputDevice(platform, this);
             _wlSurface = platform.WlCompositor.CreateSurface();
             _wlSurface.Events = this;
             _xdgSurface = platform.XdgWmBase.GetXdgSurface(_wlSurface);
@@ -38,8 +38,11 @@ namespace Avalonia.Wayland
             _xdgToplevel = _xdgSurface.GetToplevel();
             _xdgToplevel.Events = this;
             _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
+            WlInputDevice = new WlInputDevice(platform, this);
 
-            if (popupParent is not null)
+            if (popupParent is null)
+                platform.XdgWmBase.Events = this;
+            else
                 SetParent(popupParent);
 
             platform.WlDisplay.Roundtrip();
@@ -174,7 +177,8 @@ namespace Avalonia.Wayland
             get => _windowState;
             set
             {
-                if (_windowState == value) return;
+                if (_windowState == value)
+                    return;
                 switch (value)
                 {
                     case WindowState.Minimized:
@@ -194,15 +198,13 @@ namespace Avalonia.Wayland
                         else if (_windowState == WindowState.FullScreen)
                             _xdgToplevel.UnsetFullscreen();
                         break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(value), value, null);
                 }
             }
         }
 
         public Action<WindowState> WindowStateChanged { get; set; }
 
-        public void SetTitle(string? title) => _xdgToplevel.SetTitle(title);
+        public void SetTitle(string? title) => _xdgToplevel.SetTitle(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(title ?? string.Empty)));
 
         public void SetParent(IWindowImpl parent)
         {
@@ -301,35 +303,40 @@ namespace Avalonia.Wayland
         {
             if (states.Length == 0 && _active)
             {
-                Deactivated?.Invoke();
+                _prevWindowState = _windowState;
                 _windowState = WindowState.Minimized;
                 _active = false;
+                Deactivated?.Invoke();
                 WindowStateChanged.Invoke(_windowState);
                 return;
             }
 
-            _windowState = WindowState.Normal;
+            var windowState = WindowState.Normal;
             foreach (var state in states)
             {
                 switch (state)
                 {
                     case XdgToplevel.StateEnum.Maximized:
-                        _windowState = WindowState.Maximized;
-                        WindowStateChanged?.Invoke(_windowState);
+                        windowState = WindowState.Maximized;
                         break;
                     case XdgToplevel.StateEnum.Fullscreen:
-                        _windowState = WindowState.FullScreen;
-                        WindowStateChanged?.Invoke(_windowState);
+                        windowState = WindowState.FullScreen;
                         break;
                     case XdgToplevel.StateEnum.Activated when !_active:
-                        Activated?.Invoke();
+                        windowState = _prevWindowState;
                         _active = true;
+                        Activated?.Invoke();
                         break;
                 }
             }
 
-            var size = new Size(width, height);
-            Resize(size, PlatformResizeReason.User);
+            if (_windowState != windowState)
+            {
+                _windowState = windowState;
+                WindowStateChanged.Invoke(windowState);
+            }
+
+            Resize(new Size(width, height), PlatformResizeReason.User);
         }
 
         public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)
@@ -342,7 +349,8 @@ namespace Avalonia.Wayland
 
         public void OnClose(XdgToplevel eventSender)
         {
-            if (Closing?.Invoke() is true) return;
+            if (Closing?.Invoke() is true)
+                return;
             Closed?.Invoke();
         }
 
@@ -373,10 +381,7 @@ namespace Avalonia.Wayland
             LibWaylandEgl.wl_egl_window_destroy(Handle.Handle);
         }
 
-        private void Redraw()
-        {
-            Paint.Invoke(Rect.Empty);
-        }
+        private void Redraw() => Paint.Invoke(Rect.Empty);
 
         private static readonly Dictionary<WindowEdge, XdgToplevel.ResizeEdgeEnum> _windowEdges = new()
         {

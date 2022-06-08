@@ -13,7 +13,6 @@ using Avalonia.Wayland;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgActivationV1;
 using NWayland.Protocols.XdgDecorationUnstableV1;
-using NWayland.Protocols.XdgOutputUnstableV1;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
@@ -40,8 +39,6 @@ namespace Avalonia.Wayland
 
         internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; private set; }
 
-        internal ZxdgOutputManagerV1 ZxdgOutputManager { get; private set; }
-
         internal WlScreens WlScreens { get; private set; }
 
         public void Initialize(WaylandPlatformOptions options)
@@ -58,7 +55,6 @@ namespace Avalonia.Wayland
             XdgWmBase = WlRegistryHandler.Bind(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
             XdgActivation = WlRegistryHandler.Bind(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
-            ZxdgOutputManager = WlRegistryHandler.Bind(ZxdgOutputManagerV1.BindFactory, ZxdgOutputManagerV1.InterfaceName, ZxdgOutputManagerV1.InterfaceVersion);
             WlScreens = new WlScreens(this);
 
             AvaloniaLocator.CurrentMutable.BindToSelf(this)
@@ -69,16 +65,18 @@ namespace Avalonia.Wayland
                 .Bind<PlatformHotkeyConfiguration>().ToConstant(new PlatformHotkeyConfiguration(KeyModifiers.Control))
                 .Bind<IKeyboardDevice>().ToConstant(new KeyboardDevice())
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
-                .Bind<IClipboard>().ToLazy<IClipboard>(() => new WlDataHandler(this))
-                //.Bind<IPlatformSettings>().ToConstant(new PlatformSettingsStub())
+                .Bind<IClipboard>().ToConstant(new WlDataHandler(this))
                 .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
                 .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
                 //.Bind<IPlatformLifetimeEventsImpl>().ToConstant();
 
+            if (options.UseGpu)
+            {
                 var egl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, 0x31D8, WlDisplay.Handle, null));
                 if (egl is not null)
                     AvaloniaLocator.CurrentMutable.Bind<IPlatformOpenGlInterface>().ToConstant(egl);
+            }
         }
 
         public IWindowImpl CreateWindow() => new WlWindow(this, null);
@@ -101,7 +99,6 @@ namespace Avalonia.Wayland
             XdgWmBase.Dispose();
             XdgActivation.Dispose();
             ZxdgDecorationManager.Dispose();
-            ZxdgOutputManager.Dispose();
             WlCompositor.Dispose();
             WlRegistryHandler.Dispose();
             WlDisplay.Dispose();
