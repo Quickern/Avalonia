@@ -117,7 +117,8 @@ namespace Avalonia.Wayland
 
         public void SetCursor(ICursorImpl? cursor)
         {
-            if (cursor is not WlCursorFactory.WlCursor wlCursor) return;
+            if (cursor is not WlCursorFactory.WlCursor wlCursor)
+                return;
             WlInputDevice.SetCursor(wlCursor);
         }
 
@@ -266,7 +267,8 @@ namespace Avalonia.Wayland
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
-            if (clientSize == ClientSize || clientSize == Size.Empty) return;
+            if (clientSize == ClientSize || clientSize == Size.Empty)
+                return;
             ClientSize = clientSize;
             LibWaylandEgl.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
             Resized.Invoke(ClientSize, reason);
@@ -365,7 +367,8 @@ namespace Avalonia.Wayland
             _wlOutput = output;
             _platform.WlScreens.ActiveWindow = this;
             var screen = _platform.WlScreens.ScreenFromOutput(output);
-            if (MathUtilities.AreClose(screen.PixelDensity, RenderScaling)) return;
+            if (MathUtilities.AreClose(screen.PixelDensity, RenderScaling))
+                return;
             RenderScaling = screen.PixelDensity;
             ScalingChanged?.Invoke(RenderScaling);
         }
