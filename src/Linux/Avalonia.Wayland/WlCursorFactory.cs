@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Avalonia.Input;
 using Avalonia.Platform;
 
@@ -8,22 +7,29 @@ namespace Avalonia.Wayland
 {
     internal class WlCursorFactory : ICursorFactory, IDisposable
     {
+        private readonly AvaloniaWaylandPlatform _platform;
         private readonly IntPtr _theme;
-        private readonly Dictionary<StandardCursorType, WlCursor> _wlCursorCache = new();
+        private readonly Dictionary<StandardCursorType, WlThemeCursor> _wlCursorCache = new();
 
         public WlCursorFactory(AvaloniaWaylandPlatform platform)
         {
-            _theme = LibWaylandCursor.wl_cursor_theme_load(null, 32, platform.WlShm.Handle);
+            _platform = platform;
+            var themeName = Environment.GetEnvironmentVariable("XCURSOR_THEME") ?? "default";
+            var themeSizeVar = Environment.GetEnvironmentVariable("XCURSOR_SIZE");
+            var themeSize = themeSizeVar is null ? 32 : int.Parse(themeSizeVar);
+            _theme = LibWaylandCursor.wl_cursor_theme_load(themeName, themeSize, platform.WlShm.Handle);
         }
 
-        public ICursorImpl GetCursor(StandardCursorType cursorType)
+        public unsafe ICursorImpl GetCursor(StandardCursorType cursorType)
         {
-            if (_wlCursorCache.TryGetValue(cursorType, out var wlCursor)) return wlCursor;
-            foreach (var name in _standardCurorNames[cursorType])
+            if (_wlCursorCache.TryGetValue(cursorType, out var wlCursor))
+                return wlCursor;
+            foreach (var name in _standardCursorNames[cursorType])
             {
                 var cursor = LibWaylandCursor.wl_cursor_theme_get_cursor(_theme, name);
-                if (cursor == IntPtr.Zero) continue;
-                wlCursor = new WlCursor(cursor);
+                if (cursor is null)
+                    continue;
+                wlCursor = new WlThemeCursor(cursor, _platform);
                 _wlCursorCache.Add(cursorType, wlCursor);
                 return wlCursor;
             }
@@ -36,7 +42,7 @@ namespace Avalonia.Wayland
             return null; // TODO
         }
 
-        private static readonly Dictionary<StandardCursorType, string?[]> _standardCurorNames = new()
+        private static readonly Dictionary<StandardCursorType, string[]> _standardCursorNames = new()
         {
             { StandardCursorType.Arrow, new[] { "left_ptr", "default", "top_left_arrow" } },
             { StandardCursorType.UpArrow, new [] { "up_arrow" } },
@@ -67,28 +73,6 @@ namespace Avalonia.Wayland
         public void Dispose()
         {
             LibWaylandCursor.wl_cursor_theme_destroy(_theme);
-        }
-
-        public sealed class WlCursor : ICursorImpl
-        {
-            public WlCursor(IntPtr handle)
-            {
-                Handle = handle;
-            }
-
-            public IntPtr Handle { get; }
-
-            public void Dispose() { }
-        }
-
-        private class ShmPool
-        {
-            private readonly IntPtr _fd;
-
-            public ShmPool()
-            {
-                var path = Path.GetTempPath();
-            }
         }
     }
 }

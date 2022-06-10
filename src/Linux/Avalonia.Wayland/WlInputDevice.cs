@@ -16,6 +16,7 @@ namespace Avalonia.Wayland
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly ITopLevelImpl _topLevelImpl;
         private readonly Timer _timer;
+        private readonly WlSurface _pointerSurface;
 
         private WlPointer? _wlPointer;
         private WlKeyboard? _wlKeyboard;
@@ -47,6 +48,7 @@ namespace Avalonia.Wayland
             _platform.WlSeat.Events = this;
             _timer = new Timer();
             _timer.Elapsed += OnRepeatKey;
+            _pointerSurface = platform.WlCompositor.CreateSurface();
         }
 
         public MouseDevice? MouseDevice { get; private set; }
@@ -63,10 +65,13 @@ namespace Avalonia.Wayland
 
         public uint KeyboardEnterSerial { get; private set; }
 
-        public void SetCursor(WlCursorFactory.WlCursor wlCursor)
+        public void SetCursor(WlCursor wlCursor)
         {
-            if (_wlPointer is null) return;
-            //_wlPointer.SetCursor(LastSerial, );
+            if (_wlPointer is null || wlCursor.ImageCount <= 0)
+                return;
+            _pointerSurface.Attach(wlCursor[0].WlBuffer, 0, 0);
+            _pointerSurface.Commit();
+            _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, wlCursor[0].HotspotX, wlCursor[0].HotspotY);
         }
 
         public void OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)
@@ -281,23 +286,21 @@ namespace Avalonia.Wayland
             _timer.Interval = _repeatInterval;
         }
 
-        private static RawPointerEventType ProcessButton(uint button, WlPointer.ButtonStateEnum buttonState)
-            => button switch
-                {
-                    (uint)EvKey.BTN_LEFT => buttonState == WlPointer.ButtonStateEnum.Pressed ?
-                        RawPointerEventType.LeftButtonDown :
-                        RawPointerEventType.LeftButtonUp,
-                    (uint)EvKey.BTN_RIGHT => buttonState == WlPointer.ButtonStateEnum.Pressed ?
-                        RawPointerEventType.RightButtonDown :
-                        RawPointerEventType.RightButtonUp,
-                    (uint)EvKey.BTN_MIDDLE => buttonState == WlPointer.ButtonStateEnum.Pressed ?
-                        RawPointerEventType.MiddleButtonDown :
-                        RawPointerEventType.MiddleButtonUp,
-                    _ => RawPointerEventType.NonClientLeftButtonDown
-                };
+        private static RawPointerEventType ProcessButton(uint button, WlPointer.ButtonStateEnum buttonState) => button switch
+            {
+                (uint)EvKey.BTN_LEFT => buttonState == WlPointer.ButtonStateEnum.Pressed ?
+                    RawPointerEventType.LeftButtonDown :
+                    RawPointerEventType.LeftButtonUp,
+                (uint)EvKey.BTN_RIGHT => buttonState == WlPointer.ButtonStateEnum.Pressed ?
+                    RawPointerEventType.RightButtonDown :
+                    RawPointerEventType.RightButtonUp,
+                (uint)EvKey.BTN_MIDDLE => buttonState == WlPointer.ButtonStateEnum.Pressed ?
+                    RawPointerEventType.MiddleButtonDown :
+                    RawPointerEventType.MiddleButtonUp,
+                _ => RawPointerEventType.NonClientLeftButtonDown
+            };
 
-        private static RawKeyEventType KeyStateToRawKeyEventType(WlKeyboard.KeyStateEnum keyState)
-            => keyState switch
+        private static RawKeyEventType KeyStateToRawKeyEventType(WlKeyboard.KeyStateEnum keyState) => keyState switch
             {
                 WlKeyboard.KeyStateEnum.Pressed => RawKeyEventType.KeyDown,
                 WlKeyboard.KeyStateEnum.Released => RawKeyEventType.KeyUp

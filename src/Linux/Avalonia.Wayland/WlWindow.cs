@@ -113,13 +113,12 @@ namespace Avalonia.Wayland
 
         public Point PointToClient(PixelPoint point) => new(point.X, point.Y);
 
-        public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
+        public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y); 
 
         public void SetCursor(ICursorImpl? cursor)
         {
-            if (cursor is not WlCursorFactory.WlCursor wlCursor)
-                return;
-            WlInputDevice.SetCursor(wlCursor);
+            if (cursor is WlCursor wlCursor)
+                WlInputDevice.SetCursor(wlCursor);
         }
 
         public Action? Closed { get; set; }
