@@ -10,14 +10,14 @@ namespace Avalonia.Wayland
             ImageCount = imageCount;
         }
 
-        public abstract WlCursorImage this[uint index]
+        public abstract WlCursorImage? this[uint index]
         {
             get;
         }
 
         public uint ImageCount { get; }
 
-        public void Dispose() { }
+        public abstract void Dispose();
 
         public class WlCursorImage
         {

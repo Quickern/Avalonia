@@ -28,5 +28,11 @@ namespace Avalonia.Wayland
                 return _wlCursorImages[index] = new WlCursorImage(wlBuffer, (int)image->hotspot_x, (int)image->hotspot_y);
             }
         }
+
+        public override void Dispose()
+        {
+            foreach (var wlCursorImage in _wlCursorImages)
+                wlCursorImage?.WlBuffer.Dispose();
+        }
     }
 }

@@ -15,6 +15,7 @@
   <ItemGroup Label="InternalsVisibleTo">
     <InternalsVisibleTo Include="Avalonia.X11, PublicKey=$(AvaloniaPublicKey)" />
     <InternalsVisibleTo Include="Avalonia.Wayland, PublicKey=$(AvaloniaPublicKey)" />
+    <InternalsVisibleTo Include="Avalonia.LinuxFrameBuffer, PublicKey=$(AvaloniaPublicKey)" />
   </ItemGroup>
 
 </Project>

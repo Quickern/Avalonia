@@ -69,9 +69,12 @@ namespace Avalonia.Wayland
         {
             if (_wlPointer is null || wlCursor.ImageCount <= 0)
                 return;
-            _pointerSurface.Attach(wlCursor[0].WlBuffer, 0, 0);
+            var cursorImage = wlCursor[0];
+            if (cursorImage is null)
+                return;
+            _pointerSurface.Attach(cursorImage.WlBuffer, 0, 0);
             _pointerSurface.Commit();
-            _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, wlCursor[0].HotspotX, wlCursor[0].HotspotY);
+            _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, cursorImage.HotspotX, cursorImage.HotspotY);
         }
 
         public void OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)
@@ -137,7 +140,7 @@ namespace Avalonia.Wayland
 
         public void OnKeymap(WlKeyboard eventSender, WlKeyboard.KeymapFormatEnum format, int fd, uint size)
         {
-            var map = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), 0x1, 0x02, fd, IntPtr.Zero);
+            var map = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), NativeMethods.PROT_READ, NativeMethods.MAP_PRIVATE, fd, IntPtr.Zero);
 
             if (map == new IntPtr(-1))
             {
@@ -276,10 +279,10 @@ namespace Avalonia.Wayland
         {
             if (_topLevelImpl.Input is null)
                 return;
-            Dispatcher.UIThread.Post(_topLevelImpl.Input.Invoke, new RawKeyEventArgs(KeyboardDevice!, _repeatTime, InputRoot, RawKeyEventType.KeyDown, _currentKey, _modifiers));
+            Dispatcher.UIThread.Post(() => _topLevelImpl.Input.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, InputRoot, RawKeyEventType.KeyDown, _currentKey, _modifiers)));
             if (_currentText is null)
                 return;
-            Dispatcher.UIThread.Post(_topLevelImpl.Input.Invoke, new RawTextInputEventArgs(KeyboardDevice!, _repeatTime, InputRoot, _currentText));
+            Dispatcher.UIThread.Post(() => _topLevelImpl.Input.Invoke( new RawTextInputEventArgs(KeyboardDevice!, _repeatTime, InputRoot, _currentText)));
             if (!_firstRepeat)
                 return;
             _firstRepeat = false;

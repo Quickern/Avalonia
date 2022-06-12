@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Platform;
+using NWayland.Protocols.Wayland;
+
 
 namespace Avalonia.Wayland
 {
@@ -15,8 +19,8 @@ namespace Avalonia.Wayland
         {
             _platform = platform;
             var themeName = Environment.GetEnvironmentVariable("XCURSOR_THEME") ?? "default";
-            var themeSizeVar = Environment.GetEnvironmentVariable("XCURSOR_SIZE");
-            var themeSize = themeSizeVar is null ? 32 : int.Parse(themeSizeVar);
+            if (!int.TryParse(Environment.GetEnvironmentVariable("XCURSOR_SIZE"), out var themeSize))
+                themeSize = 32;
             _theme = LibWaylandCursor.wl_cursor_theme_load(themeName, themeSize, platform.WlShm.Handle);
         }
 
@@ -39,7 +43,7 @@ namespace Avalonia.Wayland
 
         public ICursorImpl CreateCursor(IBitmapImpl cursor, PixelPoint hotSpot)
         {
-            return null; // TODO
+            return new WlBitmapCursor(_platform, cursor, hotSpot);
         }
 
         private static readonly Dictionary<StandardCursorType, string[]> _standardCursorNames = new()

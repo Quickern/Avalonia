@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Avalonia.FreeDesktop
 {
-    public static class NativeMethods
+    internal static class NativeMethods
     {
         private const string C = "libc";
         private const string EvDev = "libevdev.so.2";
@@ -15,6 +15,20 @@ namespace Avalonia.FreeDesktop
         public const int EPOLLERR = 8;
         public const int EPOLLHUP = 10;
         public const int EPOLL_CTL_ADD = 1;
+
+        public const int MFD_CLOEXEC = 1;
+        public const int MFD_ALLOW_SEALING = 2;
+
+        public const int EINTR = 4;
+
+        public const int F_LINUX_SPECIFIC_BASE = 1024;
+        public const int F_ADD_SEALS = F_LINUX_SPECIFIC_BASE + 9;
+        public const int F_SEAL_SHRINK = 2;
+
+        public const int PROT_READ = 1;
+        public const int PROT_WRITE = 2;
+        public const int MAP_SHARED = 1;
+        public const int MAP_PRIVATE = 2;
 
         [DllImport(C, SetLastError = true)]
         private static extern long readlink([MarshalAs(UnmanagedType.LPArray)] byte[] filename,
@@ -47,6 +61,15 @@ namespace Avalonia.FreeDesktop
 
         [DllImport(C, EntryPoint = "memcpy", SetLastError = true)]
         public static extern int memcpy(IntPtr dest, IntPtr src, IntPtr length);
+
+        [DllImport(C, SetLastError = true)]
+        public static extern int memfd_create(string name, int flags);
+
+        [DllImport(C, SetLastError = true)]
+        public static extern int ftruncate(int fd, int size);
+
+        [DllImport(C, SetLastError = true)]
+        public static extern int fcntl(int fd, int cmd, int flags);
 
         [DllImport(C, EntryPoint = "poll", SetLastError = true)]
         public static extern unsafe int poll(pollfd* fds, IntPtr nfds, int timeout);
