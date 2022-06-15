@@ -11,7 +11,7 @@ namespace Avalonia.Wayland
         public static extern IntPtr xkb_context_new(int flags);
 
         [DllImport(XkbCommon)]
-        public static extern IntPtr xkb_keymap_new_from_string(IntPtr context, IntPtr @string, uint format, uint flags);
+        public static extern IntPtr xkb_keymap_new_from_string(IntPtr context, IntPtr keymapFormat, uint format, uint flags);
 
         [DllImport(XkbCommon)]
         public static extern IntPtr xkb_state_new(IntPtr keymap);
@@ -32,7 +32,7 @@ namespace Avalonia.Wayland
         public static extern bool xkb_keymap_key_repeats(IntPtr keymap, uint key);
 
         [DllImport(XkbCommon)]
-        public static extern int xkb_keysym_to_utf8(uint sym, IntPtr buffer, uint size);
+        public static extern int xkb_state_key_get_utf8(IntPtr state, uint key, IntPtr buffer, uint size);
 
         [DllImport(XkbCommon)]
         public static extern void xkb_state_unref(IntPtr state);
@@ -41,7 +41,7 @@ namespace Avalonia.Wayland
         public static extern void xkb_context_unref(IntPtr context);
 
         [DllImport(XkbCommon)]
-        public static extern unsafe uint xkb_state_key_get_syms(IntPtr state, uint code, uint** syms);
+        public static extern uint xkb_state_key_get_one_sym(IntPtr state, uint key);
 
         [Flags]
         public enum XkbStateComponent

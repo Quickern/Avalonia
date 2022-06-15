@@ -186,11 +186,7 @@ namespace Avalonia.Wayland
         {
             Serial = serial;
             var code = key + 8;
-            uint* syms;
-            var numSyms = LibXkbCommon.xkb_state_key_get_syms(_xkbState, code, &syms);
-            var sym = numSyms == 1 ? syms[0] : 0;
-            if (sym == 0)
-                return;
+            var sym = LibXkbCommon.xkb_state_key_get_one_sym(_xkbState, code);
             _currentKey = XkbKeyTransform.ConvertKey((XkbKey)sym);
             _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, KeyStateToRawKeyEventType(state), _currentKey, _modifiers));
             if (state == WlKeyboard.KeyStateEnum.Released && _repeatSym == sym)
@@ -201,11 +197,9 @@ namespace Avalonia.Wayland
             else if (state == WlKeyboard.KeyStateEnum.Pressed)
             {
                 var chars = stackalloc byte[16];
-                if (LibXkbCommon.xkb_keysym_to_utf8(sym, (IntPtr)chars, sizeof(byte) * 16) > 0)
-                {
-                    _currentText = Encoding.UTF8.GetString(chars, 16);
-                    _topLevelImpl.Input?.Invoke(new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, _currentText));
-                }
+                var count = LibXkbCommon.xkb_state_key_get_utf8(_xkbState, code, (IntPtr)chars, 16);
+                _currentText = Encoding.UTF8.GetString(chars, count);
+                _topLevelImpl.Input?.Invoke(new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, _currentText));
 
                 if (!LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code))
                     return;
