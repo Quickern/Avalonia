@@ -73,8 +73,9 @@ namespace Avalonia.Wayland
             if (cursorImage is null)
                 return;
             _pointerSurface.Attach(cursorImage.WlBuffer, 0, 0);
+            _pointerSurface.Damage(0, 0, cursorImage.Size.Width, cursorImage.Size.Height);
             _pointerSurface.Commit();
-            _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, cursorImage.HotspotX, cursorImage.HotspotY);
+            _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, cursorImage.Hotspot.X, cursorImage.Hotspot.Y);
         }
 
         public void OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)

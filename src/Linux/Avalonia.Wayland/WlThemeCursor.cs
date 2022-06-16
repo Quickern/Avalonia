@@ -25,7 +25,9 @@ namespace Avalonia.Wayland
                 var image = _wlCursor->images[index];
                 var rawBuffer = LibWaylandCursor.wl_cursor_image_get_buffer(image);
                 var wlBuffer = new WlBuffer(rawBuffer, WlBuffer.InterfaceVersion, _platform.WlDisplay);
-                return _wlCursorImages[index] = new WlCursorImage(wlBuffer, (int)image->hotspot_x, (int)image->hotspot_y);
+                var size = new PixelSize((int)image->width, (int)image->height);
+                var hotspot = new PixelPoint((int)image->hotspot_x, (int)image->hotspot_y);
+                return _wlCursorImages[index] = new WlCursorImage(wlBuffer, size, hotspot);
             }
         }
 

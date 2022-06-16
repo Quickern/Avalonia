@@ -34,7 +34,7 @@ namespace Avalonia.Wayland
             using var ctx = renderTarget.CreateDrawingContext(null);
             var r = new Rect(cursor.PixelSize.ToSize(1));
             ctx.DrawBitmap(RefCountable.CreateUnownedNotClonable(cursor), 1, r, r);
-            _wlCursorImage = new WlCursorImage(_wlBuffer, hotspot.X, hotspot.Y);
+            _wlCursorImage = new WlCursorImage(_wlBuffer, cursor.PixelSize, hotspot);
         }
 
         public override WlCursorImage? this[uint index] => _wlCursorImage;

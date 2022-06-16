@@ -113,10 +113,16 @@ namespace Avalonia.Wayland
 
         public Point PointToClient(PixelPoint point) => new(point.X, point.Y);
 
-        public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y); 
+        public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
         public void SetCursor(ICursorImpl? cursor)
         {
+            if (cursor is null)
+            {
+                var cursorFactory = AvaloniaLocator.Current.GetRequiredService<ICursorFactory>();
+                cursor = cursorFactory.GetCursor(StandardCursorType.Arrow);
+            }
+
             if (cursor is WlCursor wlCursor)
                 WlInputDevice.SetCursor(wlCursor);
         }
@@ -343,7 +349,8 @@ namespace Avalonia.Wayland
         public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)
         {
             var isExtended = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
-            if (isExtended == IsClientAreaExtendedToDecorations) return;
+            if (isExtended == IsClientAreaExtendedToDecorations)
+                return;
             IsClientAreaExtendedToDecorations = isExtended;
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }

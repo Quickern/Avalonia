@@ -21,16 +21,16 @@ namespace Avalonia.Wayland
 
         public class WlCursorImage
         {
-            public WlCursorImage(WlBuffer wlBuffer, int hotspotX, int hotspotY)
+            public WlCursorImage(WlBuffer wlBuffer, PixelSize size, PixelPoint hotspot)
             {
                 WlBuffer = wlBuffer;
-                HotspotX = hotspotX;
-                HotspotY = hotspotY;
+                Size = size;
+                Hotspot = hotspot;
             }
 
             public WlBuffer WlBuffer { get; }
-            public int HotspotX { get; }
-            public int HotspotY { get; }
+            public PixelSize Size { get; }
+            public PixelPoint Hotspot { get; }
         }
     }
 }

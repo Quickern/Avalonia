@@ -1,11 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Platform;
-using NWayland.Protocols.Wayland;
-
 
 namespace Avalonia.Wayland
 {
@@ -13,15 +9,16 @@ namespace Avalonia.Wayland
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly IntPtr _theme;
-        private readonly Dictionary<StandardCursorType, WlThemeCursor> _wlCursorCache = new();
+        private readonly Dictionary<StandardCursorType, WlCursor> _wlCursorCache;
 
         public WlCursorFactory(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             var themeName = Environment.GetEnvironmentVariable("XCURSOR_THEME") ?? "default";
             if (!int.TryParse(Environment.GetEnvironmentVariable("XCURSOR_SIZE"), out var themeSize))
-                themeSize = 32;
+                themeSize = 24;
             _theme = LibWaylandCursor.wl_cursor_theme_load(themeName, themeSize, platform.WlShm.Handle);
+            _wlCursorCache = new Dictionary<StandardCursorType, WlCursor> { { StandardCursorType.None, new WlNoCursor() } };
         }
 
         public unsafe ICursorImpl GetCursor(StandardCursorType cursorType)
@@ -41,11 +38,11 @@ namespace Avalonia.Wayland
             return GetCursor(StandardCursorType.Arrow);
         }
 
-        public ICursorImpl CreateCursor(IBitmapImpl cursor, PixelPoint hotSpot)
-        {
-            return new WlBitmapCursor(_platform, cursor, hotSpot);
-        }
+        public ICursorImpl CreateCursor(IBitmapImpl cursor, PixelPoint hotSpot) => new WlBitmapCursor(_platform, cursor, hotSpot);
 
+        public void Dispose() => LibWaylandCursor.wl_cursor_theme_destroy(_theme);
+
+        // https://github.com/qt/qtwayland/blob/dev/src/client/qwaylandcursor.cpp
         private static readonly Dictionary<StandardCursorType, string[]> _standardCursorNames = new()
         {
             { StandardCursorType.Arrow, new[] { "left_ptr", "default", "top_left_arrow" } },
@@ -71,12 +68,18 @@ namespace Avalonia.Wayland
             { StandardCursorType.DragCopy, new [] { "dnd-copy", "copy" } },
             { StandardCursorType.DragLink, new [] { "dnd-link", "link" } },
             { StandardCursorType.DragMove, new [] { "dnd-move", "move"} },
-            { StandardCursorType.No, new [] { string.Empty } }
+            { StandardCursorType.No, new [] { "forbidden", "not-allowed", "crossed_circle", "circle", "03b6e0fcb3499374a867c041f52298f0" } }
         };
 
-        public void Dispose()
+        private sealed class WlNoCursor : WlCursor
         {
-            LibWaylandCursor.wl_cursor_theme_destroy(_theme);
+            private readonly WlCursorImage _wlCursorImage;
+
+            public WlNoCursor() : base(1) => _wlCursorImage = new WlCursorImage(null!, PixelSize.Empty, PixelPoint.Origin);
+
+            public override WlCursorImage this[uint index] => _wlCursorImage;
+
+            public override void Dispose() { }
         }
     }
 }
