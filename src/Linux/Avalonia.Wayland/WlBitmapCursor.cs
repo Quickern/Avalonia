@@ -3,6 +3,7 @@ using Avalonia.Controls.Platform.Surfaces;
 using Avalonia.FreeDesktop;
 using Avalonia.Platform;
 using Avalonia.Utilities;
+using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
@@ -25,7 +26,7 @@ namespace Avalonia.Wayland
             _size = cursor.PixelSize.Height * _stride;
             _fd = FdHelper.CreateAnonymousFile(_size);
             if (_fd == -1)
-                return;
+                throw new NWaylandException("Failed to create FrameBuffer");
             _data = NativeMethods.mmap(IntPtr.Zero, new IntPtr(_size), NativeMethods.PROT_READ | NativeMethods.PROT_WRITE, NativeMethods.MAP_SHARED, _fd, IntPtr.Zero);
             _wlShmPool= platform.WlShm.CreatePool(_fd, _size);
             _wlBuffer = _wlShmPool.CreateBuffer(0, cursor.PixelSize.Width, cursor.PixelSize.Height, _stride, WlShm.FormatEnum.Argb8888);

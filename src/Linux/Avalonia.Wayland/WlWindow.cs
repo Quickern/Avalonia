@@ -23,6 +23,8 @@ namespace Avalonia.Wayland
         private readonly XdgSurface _xdgSurface;
         private readonly XdgToplevel _xdgToplevel;
         private readonly ZxdgToplevelDecorationV1 _toplevelDecoration;
+        private readonly WlFramebufferSurface _wlFramebufferSurface;
+        private readonly IntPtr _eglWindow;
 
         private bool _active;
         private WindowState _prevWindowState;
@@ -51,16 +53,14 @@ namespace Avalonia.Wayland
                 ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
                 : new Size(400, 600);
 
-            _surfaces = new List<object>
-            {
-                new WlFramebufferSurface()
-            };
+            _wlFramebufferSurface = new WlFramebufferSurface(platform, this, _wlSurface);
+            _surfaces = new List<object> { _wlFramebufferSurface };
 
             var glFeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
             if (glFeature is EglPlatformOpenGlInterface egl)
             {
-                var eglWindow = LibWaylandEgl.wl_egl_window_create(_wlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
-                Handle = new PlatformHandle(eglWindow, "EGL_WINDOW");
+                _eglWindow = LibWaylandEgl.wl_egl_window_create(_wlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
+                Handle = new PlatformHandle(_eglWindow, "EGL_WINDOW");
                 _surfaces.Add(new EglGlPlatformSurface(egl, new SurfaceInfo(this)));
             }
         }
@@ -210,7 +210,7 @@ namespace Avalonia.Wayland
 
         public Action<WindowState> WindowStateChanged { get; set; }
 
-        public void SetTitle(string? title) => _xdgToplevel.SetTitle(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(title ?? string.Empty)));
+        public void SetTitle(string? title) => _xdgToplevel.SetTitle(title ?? string.Empty);
 
         public void SetParent(IWindowImpl parent)
         {
@@ -260,22 +260,17 @@ namespace Avalonia.Wayland
         public Thickness ExtendedMargins { get; }
         public Thickness OffScreenMargin { get; }
 
-        public void BeginMoveDrag(PointerPressedEventArgs e)
-        {
-            _xdgToplevel.Move(_platform.WlSeat, WlInputDevice.Serial);
-        }
+        public void BeginMoveDrag(PointerPressedEventArgs e) => _xdgToplevel.Move(_platform.WlSeat, WlInputDevice.Serial);
 
-        public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e)
-        {
-            _xdgToplevel.Resize(_platform.WlSeat, WlInputDevice.Serial, _windowEdges[edge]);
-        }
+        public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e) => _xdgToplevel.Resize(_platform.WlSeat, WlInputDevice.Serial, _windowEdges[edge]);
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
             if (clientSize == ClientSize || clientSize == Size.Empty)
                 return;
             ClientSize = clientSize;
-            LibWaylandEgl.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
+            if (_eglWindow != IntPtr.Zero)
+                LibWaylandEgl.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
             Resized.Invoke(ClientSize, reason);
             Redraw();
         }
@@ -386,8 +381,10 @@ namespace Avalonia.Wayland
             _toplevelDecoration.Dispose();
             _xdgToplevel.Dispose();
             _xdgSurface.Dispose();
+            _wlFramebufferSurface.Dispose();
             _wlSurface.Dispose();
-            LibWaylandEgl.wl_egl_window_destroy(Handle.Handle);
+            if (_eglWindow != IntPtr.Zero)
+                LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
         }
 
         private void Redraw() => Paint.Invoke(Rect.Empty);

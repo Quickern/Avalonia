@@ -7,7 +7,7 @@ namespace Avalonia.FreeDesktop
     {
         public static int CreateAnonymousFile(int size)
         {
-            var fd = NativeMethods.memfd_create("avalonia-shared", NativeMethods.MFD_CLOEXEC | NativeMethods.MFD_ALLOW_SEALING);
+            var fd = NativeMethods.memfd_create("wayland-shm", NativeMethods.MFD_CLOEXEC | NativeMethods.MFD_ALLOW_SEALING);
             if (fd == -1)
                 return -1;
             NativeMethods.fcntl(fd, NativeMethods.F_ADD_SEALS, NativeMethods.F_SEAL_SHRINK);

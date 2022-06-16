@@ -13,6 +13,7 @@ using Avalonia.Wayland;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgActivationV1;
 using NWayland.Protocols.XdgDecorationUnstableV1;
+using NWayland.Protocols.XdgForeignUnstableV2;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
@@ -39,6 +40,8 @@ namespace Avalonia.Wayland
 
         internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; private set; }
 
+        internal ZxdgExporterV2 ZxdgExporter { get; private set; }
+
         internal WlScreens WlScreens { get; private set; }
 
         public void Initialize(WaylandPlatformOptions options)
@@ -55,6 +58,7 @@ namespace Avalonia.Wayland
             XdgWmBase = WlRegistryHandler.Bind(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
             XdgActivation = WlRegistryHandler.Bind(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
+            ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             WlScreens = new WlScreens(this);
 
             AvaloniaLocator.CurrentMutable.BindToSelf(this)
