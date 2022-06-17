@@ -22,6 +22,7 @@ namespace Avalonia.Wayland
         private WlDataSourceHandler? _currentDataSourceHandler;
 
         private const string PlainText = "text/plain";
+        private const string PlainTextUtf8 = "text/plain;charset=utf-8";
         private const string UriList = "text/uri-list";
 
         public WlDataHandler(AvaloniaWaylandPlatform platform)
@@ -65,7 +66,8 @@ namespace Avalonia.Wayland
 
             public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
             {
-                if (id is not null) return;
+                if (id is not null)
+                    return;
                 CurrentOffer?.Dispose();
                 CurrentOffer = null;
             }
@@ -106,7 +108,7 @@ namespace Avalonia.Wayland
                 }
 
                 WlDataOffer.Receive(mimeType, fds[1]);
-                WlDataOffer.Display.Flush();
+                WlDataOffer.Display.Roundtrip();
                 NativeMethods.close(fds[1]);
                 return fds[0];
             }
@@ -131,14 +133,14 @@ namespace Avalonia.Wayland
 
             public void OnTarget(WlDataSource eventSender, string mimeType)
             {
-                throw new NotImplementedException();
+                
             }
 
             public unsafe void OnSend(WlDataSource eventSender, string mimeType, int fd)
             {
                 var content = mimeType switch
                 {
-                    PlainText when Text is not null => Encoding.UTF8.GetBytes(Text),
+                    PlainText or PlainTextUtf8 when Text is not null => Encoding.UTF8.GetBytes(Text),
                     UriList when Uris is not null => Uris.SelectMany(Encoding.UTF8.GetBytes).ToArray(),
                     _ when DataObject?.Get(mimeType) is byte[] data => data,
                     _ => null
@@ -182,7 +184,6 @@ namespace Avalonia.Wayland
             var window = _platform.WlScreens.ActiveWindow;
             if (window is null)
                 return Task.CompletedTask;
-
             _wlDataDevice.SetSelection(null, window.WlInputDevice.KeyboardEnterSerial);
             return Task.CompletedTask;
         }
@@ -240,8 +241,13 @@ namespace Avalonia.Wayland
             var sb = new StringBuilder();
             fixed (byte* ptr = buffer)
             {
-                while (NativeMethods.read(fd, (IntPtr)ptr, 1024) > 0)
-                    sb.Append(Encoding.UTF8.GetString(ptr, 1024));
+                while (true)
+                {
+                    var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                    if (read <= 0)
+                        break;
+                    sb.Append(Encoding.UTF8.GetString(ptr, read));
+                }
             }
 
             NativeMethods.close(fd);
@@ -303,6 +309,7 @@ namespace Avalonia.Wayland
             _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Text = text };
             dataSource.Events = _currentDataSourceHandler;
             dataSource.Offer(PlainText);
+            dataSource.Offer(PlainTextUtf8);
             _wlDataDevice.SetSelection(dataSource, window.WlInputDevice.KeyboardEnterSerial);
         }
 

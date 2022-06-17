@@ -270,7 +270,7 @@ namespace Avalonia.Wayland
 
         }
 
-        private void OnRepeatKey(object o, ElapsedEventArgs args)
+        private void OnRepeatKey(object? o, ElapsedEventArgs args)
         {
             if (_topLevelImpl.Input is null)
                 return;

@@ -45,7 +45,8 @@ namespace Avalonia.Wayland
 
         private void OnGlobalAdded(WlRegistryHandler.GlobalInfo globalInfo)
         {
-            if (globalInfo.Interface != WlOutput.InterfaceName) return;
+            if (globalInfo.Interface != WlOutput.InterfaceName)
+                return;
             var wlOutput = _platform.WlRegistryHandler.Bind(WlOutput.BindFactory, WlOutput.InterfaceVersion, globalInfo);
             var wlScreen = new WlScreen(wlOutput);
             _wlScreens.Add(globalInfo.Name, wlScreen);
@@ -54,8 +55,10 @@ namespace Avalonia.Wayland
 
         private void OnGlobalRemoved(WlRegistryHandler.GlobalInfo globalInfo)
         {
-            if (globalInfo.Interface is not WlOutput.InterfaceName) return;
-            if (!_wlScreens.TryGetValue(globalInfo.Name, out var wlScreen)) return;
+            if (globalInfo.Interface is not WlOutput.InterfaceName)
+                return;
+            if (!_wlScreens.TryGetValue(globalInfo.Name, out var wlScreen))
+                return;
             _wlScreens.Remove(globalInfo.Name);
             _wlOutputs.Remove(wlScreen.WlOutput);
             wlScreen.Dispose();
@@ -95,10 +98,6 @@ namespace Avalonia.Wayland
             {
                 PixelDensity = factor;
             }
-
-            public void OnName(WlOutput eventSender, string name) { }
-
-            public void OnDescription(WlOutput eventSender, string description) { }
 
             public void OnDone(WlOutput eventSender) { }
 
