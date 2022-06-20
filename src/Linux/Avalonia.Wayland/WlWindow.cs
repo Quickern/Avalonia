@@ -130,7 +130,7 @@ namespace Avalonia.Wayland
             get
             {
                 var screen = _platform.WlScreens.ScreenFromWindow(this);
-                return screen is null ? default : screen.Bounds.Size.ToSize(RenderScaling);
+                return screen is null ? Size.Empty : screen.Bounds.Size.ToSize(RenderScaling);
             }
         }
 
@@ -183,17 +183,7 @@ namespace Avalonia.Wayland
 
         public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
-        public void SetCursor(ICursorImpl? cursor)
-        {
-            if (cursor is null)
-            {
-                var cursorFactory = AvaloniaLocator.Current.GetRequiredService<ICursorFactory>();
-                cursor = cursorFactory.GetCursor(StandardCursorType.Arrow);
-            }
-
-            if (cursor is WlCursor wlCursor)
-                WlInputDevice.SetCursor(wlCursor);
-        }
+        public void SetCursor(ICursorImpl? cursor) => WlInputDevice.SetCursor(cursor as WlCursor);
 
         public IPopupImpl? CreatePopup() => null; // TODO
 
@@ -376,7 +366,7 @@ namespace Avalonia.Wayland
                 LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
         }
 
-        private void Redraw() => Paint?.Invoke(Rect.Empty);
+        private void Redraw() => Paint?.Invoke(new Rect(ClientSize));
 
         private static readonly Dictionary<WindowEdge, XdgToplevel.ResizeEdgeEnum> _windowEdges = new()
         {
