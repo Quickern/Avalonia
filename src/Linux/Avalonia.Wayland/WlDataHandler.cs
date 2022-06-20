@@ -16,8 +16,7 @@ namespace Avalonia.Wayland
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlDataDevice _wlDataDevice;
-        private readonly WlDataDevicehandler _wlDataDeviceHandler;
-        private readonly IDragDropDevice _dragDropDevice;
+        private readonly WlDataDeviceHandler _wlDataDeviceHandler;
 
         private WlDataSourceHandler? _currentDataSourceHandler;
 
@@ -29,24 +28,40 @@ namespace Avalonia.Wayland
         {
             _platform = platform;
             _wlDataDevice = platform.WlDataDeviceManager.GetDataDevice(platform.WlSeat);
-            _wlDataDeviceHandler = new WlDataDevicehandler();
+            _wlDataDeviceHandler = new WlDataDeviceHandler(platform);
             _wlDataDevice.Events = _wlDataDeviceHandler;
-            _dragDropDevice = AvaloniaLocator.Current.GetService<IDragDropDevice>()!;
         }
 
-        private class WlDataDevicehandler : IDisposable, WlDataDevice.IEvents
+        private class WlDataDeviceHandler : IDisposable, WlDataDevice.IEvents
         {
-            public WlDataOfferHandler? CurrentOffer { get; private set; }
+            private readonly AvaloniaWaylandPlatform _platform;
+
+            private Point _position;
+
+            public WlDataDeviceHandler(AvaloniaWaylandPlatform platform)
+            {
+                _platform = platform;
+            }
+
+            public WlDataObject? CurrentOffer { get; private set; }
 
             public void OnDataOffer(WlDataDevice eventSender, WlDataOffer id)
             {
                 CurrentOffer?.Dispose();
-                CurrentOffer = new WlDataOfferHandler(id);
+                CurrentOffer = new WlDataObject(id);
             }
 
             public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, int x, int y, WlDataOffer id)
             {
-                throw new NotImplementedException();
+                if (_platform.WlScreens.ActiveWindow is null || CurrentOffer is null)
+                    return;
+                _position = new Point(x, y);
+                var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
+                var inputRoot = _platform.WlScreens.ActiveWindow.WlInputDevice.InputRoot;
+                var modifiers = _platform.WlScreens.ActiveWindow.WlInputDevice.RawInputModifiers;
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+                CurrentOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)args.Effects);
             }
 
             public void OnLeave(WlDataDevice eventSender)
@@ -56,12 +71,26 @@ namespace Avalonia.Wayland
 
             public void OnMotion(WlDataDevice eventSender, uint time, int x, int y)
             {
-                throw new NotImplementedException();
+                if (_platform.WlScreens.ActiveWindow is null || CurrentOffer is null)
+                    return;
+                _position = new Point(x, y);
+                var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
+                var inputRoot = _platform.WlScreens.ActiveWindow.WlInputDevice.InputRoot;
+                var modifiers = _platform.WlScreens.ActiveWindow.WlInputDevice.RawInputModifiers;
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+                CurrentOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)args.Effects);
             }
 
             public void OnDrop(WlDataDevice eventSender)
             {
-                throw new NotImplementedException();
+                if (_platform.WlScreens.ActiveWindow is null || CurrentOffer is null)
+                    return;
+                var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
+                var inputRoot = _platform.WlScreens.ActiveWindow.WlInputDevice.InputRoot;
+                var modifiers = _platform.WlScreens.ActiveWindow.WlInputDevice.RawInputModifiers;
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
             }
 
             public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
@@ -75,50 +104,14 @@ namespace Avalonia.Wayland
             public void Dispose() => CurrentOffer?.Dispose();
         }
 
-        public class WlDataOfferHandler : IDisposable, WlDataOffer.IEvents
-        {
-            public WlDataOfferHandler(WlDataOffer wlDataOffer)
-            {
-                WlDataOffer = wlDataOffer;
-                wlDataOffer.Events = this;
-            }
-
-            public WlDataOffer WlDataOffer { get; }
-            public List<string> MimeTypes { get; } = new();
-
-            public void OnOffer(WlDataOffer eventSender, string mimeType) => MimeTypes.Add(mimeType);
-
-            public void OnSourceActions(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum sourceActions)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnAction(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum dndAction)
-            {
-                throw new NotImplementedException();
-            }
-
-            public int Receive(string mimeType)
-            {
-                var fds = new int[2];
-                if (NativeMethods.pipe(fds) < 0)
-                {
-                    WlDataOffer.Dispose();
-                    return -1;
-                }
-
-                WlDataOffer.Receive(mimeType, fds[1]);
-                WlDataOffer.Display.Roundtrip();
-                NativeMethods.close(fds[1]);
-                return fds[0];
-            }
-
-            public void Dispose() => WlDataOffer.Dispose();
-        }
-
         public class WlDataSourceHandler : WlDataSource.IEvents
         {
-            public WlDataSource WlDataSource { get; }
+            private readonly WlDataSource _wlDataSource;
+
+            public WlDataSourceHandler(WlDataSource wlDataSource)
+            {
+                _wlDataSource = wlDataSource;
+            }
 
             public string? Text { get; set; }
 
@@ -126,15 +119,7 @@ namespace Avalonia.Wayland
 
             public IDataObject? DataObject { get; set; }
 
-            public WlDataSourceHandler(WlDataSource wlDataSource)
-            {
-                WlDataSource = wlDataSource;
-            }
-
-            public void OnTarget(WlDataSource eventSender, string mimeType)
-            {
-                
-            }
+            public void OnTarget(WlDataSource eventSender, string mimeType) { }
 
             public unsafe void OnSend(WlDataSource eventSender, string mimeType, int fd)
             {
@@ -153,7 +138,7 @@ namespace Avalonia.Wayland
                 NativeMethods.close(fd);
             }
 
-            public void OnCancelled(WlDataSource eventSender) => WlDataSource.Dispose();
+            public void OnCancelled(WlDataSource eventSender) => _wlDataSource.Dispose();
 
             public void OnDndDropPerformed(WlDataSource eventSender)
             {
@@ -171,7 +156,7 @@ namespace Avalonia.Wayland
             }
         }
 
-        public Task<string?> GetTextAsync() => Task.FromResult(GetText());
+        public Task<string> GetTextAsync() => Task.FromResult(_wlDataDeviceHandler.CurrentOffer?.GetText() ?? string.Empty);
 
         public Task SetTextAsync(string text)
         {
@@ -210,14 +195,14 @@ namespace Avalonia.Wayland
         public Task<string[]> GetFormatsAsync() =>
             _wlDataDeviceHandler.CurrentOffer is null
                 ? Task.FromResult(Array.Empty<string>())
-                : Task.FromResult(_wlDataDeviceHandler.CurrentOffer.MimeTypes.ToArray());
+                : Task.FromResult(_wlDataDeviceHandler.CurrentOffer.GetDataFormats().ToArray());
 
         public Task<object?> GetDataAsync(string format) =>
             format switch
             {
-                DataFormats.Text => Task.FromResult<object?>(GetText()),
-                DataFormats.FileNames => Task.FromResult<object?>(GetUris()),
-                _ => Task.FromResult(GetObject())
+                DataFormats.Text => Task.FromResult<object?>(_wlDataDeviceHandler.CurrentOffer?.GetText()),
+                DataFormats.FileNames => Task.FromResult<object?>(_wlDataDeviceHandler.CurrentOffer?.GetFileNames()),
+                _ => Task.FromResult(_wlDataDeviceHandler.CurrentOffer?.Get(format))
             };
 
         public Task<DragDropEffects> DoDragDrop(PointerEventArgs triggerEvent, IDataObject data, DragDropEffects allowedEffects)
@@ -226,78 +211,6 @@ namespace Avalonia.Wayland
         }
 
         public void Dispose() => _wlDataDevice.Dispose();
-
-        private unsafe string? GetText()
-        {
-            var offer = _wlDataDeviceHandler.CurrentOffer;
-            if (offer?.MimeTypes.Contains(PlainText) is not true)
-                return null;
-
-            var fd = offer.Receive(PlainText);
-            if (fd < 0)
-                return null;
-
-            Span<byte> buffer = stackalloc byte[1024];
-            var sb = new StringBuilder();
-            fixed (byte* ptr = buffer)
-            {
-                while (true)
-                {
-                    var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
-                    if (read <= 0)
-                        break;
-                    sb.Append(Encoding.UTF8.GetString(ptr, read));
-                }
-            }
-
-            NativeMethods.close(fd);
-            return sb.ToString();
-        }
-
-        private unsafe List<string>? GetUris()
-        {
-            var offer = _wlDataDeviceHandler.CurrentOffer;
-
-            if (offer?.MimeTypes.Contains(UriList) is not true)
-                return null;
-
-            var fd = offer.Receive(UriList);
-            if (fd < 0)
-                return null;
-
-            Span<byte> buffer = stackalloc byte[1024];
-            var uris = new List<string>();
-            fixed (byte* ptr = buffer)
-            {
-                while (NativeMethods.read(fd, (IntPtr)ptr, 1024) > 0)
-                    uris.Add(Encoding.UTF8.GetString(ptr, 1024));
-            }
-
-            NativeMethods.close(fd);
-            return uris;
-        }
-
-        private unsafe object? GetObject()
-        {
-            var offer = _wlDataDeviceHandler.CurrentOffer;
-            if (offer is null || offer.MimeTypes.Count <= 0)
-                return null;
-
-            var fd = offer.Receive(offer.MimeTypes[0]);
-            if (fd < 0)
-                return null;
-
-            var buffer = new byte[1024];
-            var ms = new MemoryStream();
-            fixed (byte* ptr = buffer)
-            {
-                while (NativeMethods.read(fd, (IntPtr)ptr, 1024) > 0)
-                    ms.Write(buffer, 0, 1024);
-            }
-
-            NativeMethods.close(fd);
-            return ms.ToArray();
-        }
 
         private void SetText(string text)
         {
@@ -338,6 +251,121 @@ namespace Avalonia.Wayland
             foreach (var format in dataObject.GetDataFormats())
                 dataSource.Offer(format);
             _wlDataDevice.SetSelection(dataSource, window.WlInputDevice.KeyboardEnterSerial);
+        }
+
+        private sealed class WlDataObject : IDataObject, IDisposable, WlDataOffer.IEvents
+        {
+            private readonly List<string> _mimeTypes;
+
+            public WlDataObject(WlDataOffer wlDataOffer)
+            {
+                WlDataOffer = wlDataOffer;
+                WlDataOffer.Events = this;
+                _mimeTypes = new List<string>();
+            }
+
+            public WlDataOffer WlDataOffer { get; }
+
+            public DragDropEffects DragDropEffects { get; private set; }
+
+            public IEnumerable<string> GetDataFormats() => _mimeTypes;
+
+            public bool Contains(string dataFormat) => _mimeTypes.Contains(dataFormat);
+
+            public unsafe string? GetText()
+            {
+                var fd = Receive(PlainText);
+                if (fd < 0)
+                    return null;
+
+                Span<byte> buffer = stackalloc byte[1024];
+                var sb = new StringBuilder();
+                fixed (byte* ptr = buffer)
+                {
+                    while (true)
+                    {
+                        var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                        if (read <= 0)
+                            break;
+                        sb.Append(Encoding.UTF8.GetString(ptr, read));
+                    }
+                }
+
+                NativeMethods.close(fd);
+                return sb.ToString();
+            }
+
+            public unsafe IEnumerable<string>? GetFileNames()
+            {
+                var fd = Receive(UriList);
+                if (fd < 0)
+                    return null;
+
+                Span<byte> buffer = stackalloc byte[1024];
+                var sb = new StringBuilder();
+                fixed (byte* ptr = buffer)
+                {
+                    while (true)
+                    {
+                        var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                        if (read <= 0)
+                            break;
+                        sb.Append(Encoding.UTF8.GetString(ptr, read));
+                    }
+                }
+
+                NativeMethods.close(fd);
+                return sb.ToString().Split('\n');
+            }
+
+            public unsafe object? Get(string dataFormat)
+            {
+                if (_mimeTypes.Count <= 0)
+                    return null;
+
+                var fd = Receive(_mimeTypes[0]);
+                if (fd < 0)
+                    return null;
+
+                var buffer = new byte[1024];
+                var ms = new MemoryStream();
+                fixed (byte* ptr = buffer)
+                {
+                    while (true)
+                    {
+                        var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                        if (read <= 0)
+                            break;
+                        ms.Write(buffer, 0, read);
+                    }
+                }
+
+                NativeMethods.close(fd);
+                return ms.ToArray();
+            }
+
+            public void OnOffer(WlDataOffer eventSender, string mimeType) => _mimeTypes.Add(mimeType);
+
+            public void OnSourceActions(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum sourceActions) => DragDropEffects |= (DragDropEffects)sourceActions;
+
+            public void OnAction(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum dndAction) => DragDropEffects = (DragDropEffects)dndAction;
+
+            public void Dispose() => WlDataOffer.Dispose();
+
+            private unsafe int Receive(string mimeType)
+            {
+                var fds = stackalloc int[2];
+                if (NativeMethods.pipe2(fds, 0) < 0)
+                {
+                    WlDataOffer.Dispose();
+                    return -1;
+                }
+
+                WlDataOffer.Receive(mimeType, fds[1]);
+                WlDataOffer.Display.Roundtrip();
+                NativeMethods.close(fds[1]);
+                return fds[0];
+            }
         }
     }
 }
