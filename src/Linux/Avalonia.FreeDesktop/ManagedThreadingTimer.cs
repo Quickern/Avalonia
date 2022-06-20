@@ -4,7 +4,7 @@ using Avalonia.Threading;
 
 namespace Avalonia.FreeDesktop
 {
-    public class ManagedThreadingTimer : IComparable<ManagedThreadingTimer>
+    internal class ManagedThreadingTimer : IComparable<ManagedThreadingTimer>
     {
         private readonly Stopwatch _clock;
 
@@ -21,6 +21,7 @@ namespace Avalonia.FreeDesktop
         public TimeSpan NextTick { get; private set; }
         public TimeSpan Interval { get; }
         public Action Tick { get; }
+        public bool Disposed { get; internal set; }
 
         public void Reschedule()
         {

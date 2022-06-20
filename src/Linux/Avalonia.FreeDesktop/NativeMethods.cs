@@ -11,15 +11,8 @@ namespace Avalonia.FreeDesktop
         private const string C = "libc";
         private const string EvDev = "libevdev.so.2";
 
-        public const int EPOLLIN = 1;
-        public const int EPOLLERR = 8;
-        public const int EPOLLHUP = 10;
-        public const int EPOLL_CTL_ADD = 1;
-
         public const int MFD_CLOEXEC = 1;
         public const int MFD_ALLOW_SEALING = 2;
-
-        public const int EINTR = 4;
 
         public const int F_LINUX_SPECIFIC_BASE = 1024;
         public const int F_ADD_SEALS = F_LINUX_SPECIFIC_BASE + 9;
@@ -48,7 +41,7 @@ namespace Avalonia.FreeDesktop
         public static extern int write(int fd, IntPtr buffer, int count);
 
         [DllImport(C, SetLastError = true)]
-        public static extern int pipe(int[] fds);
+        public static extern unsafe int pipe2(int* fds, int flags);
 
         [DllImport(C, SetLastError = true)]
         public static extern unsafe int ioctl(int fd, FbIoCtl code, void* arg);
@@ -78,7 +71,7 @@ namespace Avalonia.FreeDesktop
         public static extern int epoll_create1(int size);
 
         [DllImport(C, SetLastError = true)]
-        public static extern int epoll_ctl(int epfd, int op, int fd, ref epoll_event __event);
+        public static extern unsafe int epoll_ctl(int epfd, EpollCommands op, int fd, epoll_event* __event);
 
         [DllImport(C, SetLastError = true)]
         public static extern unsafe int epoll_wait(int epfd, epoll_event* events, int maxevents, int timeout);
@@ -352,6 +345,35 @@ namespace Avalonia.FreeDesktop
 
     }
 
+    public enum Errno
+    {
+        EINTR = 4,
+        EAGAIN = 11
+    }
+
+    [Flags]
+    public enum EpollEvents : uint
+    {
+        EPOLLIN = 1,
+        EPOLLPRI = 2,
+        EPOLLOUT = 4,
+        EPOLLRDNORM = 64,
+        EPOLLRDBAND = 128,
+        EPOLLWRNORM = 256,
+        EPOLLWRBAND = 512,
+        EPOLLMSG = 1024,
+        EPOLLERR = 8,
+        EPOLLHUP = 16,
+        EPOLLRDHUP = 8192
+    }
+
+    public enum EpollCommands
+    {
+        EPOLL_CTL_ADD = 1,
+        EPOLL_CTL_DEL = 2,
+        EPOLL_CTL_MOD = 3
+    }
+
     [StructLayout(LayoutKind.Explicit)]
     public struct epoll_data
     {
@@ -368,7 +390,7 @@ namespace Avalonia.FreeDesktop
     [StructLayout(LayoutKind.Sequential)]
     public struct epoll_event
     {
-        public uint events;
+        public EpollEvents events;
         public epoll_data data;
     }
 }

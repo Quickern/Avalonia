@@ -29,26 +29,13 @@ namespace Avalonia.Wayland
             var pollFd = new pollfd
             {
                 fd = _platform.WlDisplay.GetFd(),
-                events = NativeMethods.EPOLLIN | NativeMethods.EPOLLHUP
+                events = (int)(EpollEvents.EPOLLIN | EpollEvents.EPOLLHUP)
             };
 
             var readyTimers = new List<ManagedThreadingTimer>();
             while (!cancellationToken.IsCancellationRequested)
             {
-                while (_platform.WlDisplay.PrepareRead() != 0)
-                    _platform.WlDisplay.DispatchPending();
-                _platform.WlDisplay.Flush();
-
-                var ret = NativeMethods.poll(&pollFd, new IntPtr(1), -1);
-                if (cancellationToken.IsCancellationRequested || ret < 0)
-                {
-                    _platform.WlDisplay.CancelRead();
-                    break;
-                }
-
-                if (_platform.WlDisplay.ReadEvents() == -1)
-                    break;
-
+                readyTimers.Clear();
                 var now = _clock.Elapsed;
                 TimeSpan nextTick = new(-1);
                 foreach (var timer in _timers)
@@ -66,10 +53,25 @@ namespace Avalonia.Wayland
                     if (cancellationToken.IsCancellationRequested)
                         return;
                     t.Tick();
+                    if (t.Disposed)
+                        continue;
                     t.Reschedule();
                     if (nextTick == new TimeSpan(-1) || t.NextTick < nextTick)
                         nextTick = t.NextTick;
                 }
+
+                while (_platform.WlDisplay.PrepareRead() != 0)
+                    _platform.WlDisplay.DispatchPending();
+                _platform.WlDisplay.Flush();
+
+                var timeout = nextTick == new TimeSpan(-1) ? -1 : Math.Max(1, (int)(nextTick- _clock.Elapsed).TotalMilliseconds);
+                var ret = NativeMethods.poll(&pollFd, new IntPtr(1), timeout);
+
+                if (cancellationToken.IsCancellationRequested || ret <= 0)
+                    _platform.WlDisplay.CancelRead();
+
+                if (ret > 0)
+                    _platform.WlDisplay.ReadEvents();
 
                 Dispatcher.UIThread.RunJobs();
             }
@@ -81,7 +83,11 @@ namespace Avalonia.Wayland
         {
             var timer = new ManagedThreadingTimer(_clock, priority, interval, tick);
             _timers.Add(timer);
-            return Disposable.Create(timer, t => _timers.Remove(t));
+            return Disposable.Create(timer, t =>
+            {
+                t.Disposed = true;
+                _timers.Remove(t);
+            });
         }
 
         public void Signal(DispatcherPriority priority) { }

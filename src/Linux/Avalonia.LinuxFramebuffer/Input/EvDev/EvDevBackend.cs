@@ -55,7 +55,7 @@ namespace Avalonia.LinuxFramebuffer.Input.EvDev
         }
         
         
-        public void Initialize(IScreenInfoProvider info, Action<RawInputEventArgs> onInput)
+        public unsafe void Initialize(IScreenInfoProvider info, Action<RawInputEventArgs> onInput)
         {
             _onInput = onInput;
             _epoll = epoll_create1(0);
@@ -72,8 +72,8 @@ namespace Avalonia.LinuxFramebuffer.Input.EvDev
                 handler.OnEvent += OnRawEvent;
                 _handlers.Add(handler);
 
-                var ev = new epoll_event { events = EPOLLIN, data = { u32 = (uint)c } };
-                epoll_ctl(_epoll, EPOLL_CTL_ADD, dev.Fd, ref ev);
+                var ev = new epoll_event { events = EpollEvents.EPOLLIN, data = { u32 = (uint)c } };
+                epoll_ctl(_epoll, EpollCommands.EPOLL_CTL_ADD, dev.Fd, &ev);
             }
 
             new Thread(InputThread) { IsBackground = true }.Start();

@@ -19,7 +19,7 @@ namespace Avalonia.FreeDesktop
             int ret;
             do
                 ret = NativeMethods.ftruncate(fd, size);
-            while (ret < 0 && Marshal.GetLastWin32Error() == NativeMethods.EINTR);
+            while (ret < 0 && Marshal.GetLastWin32Error() == (int)Errno.EINTR);
             if (ret >= 0)
                 return fd;
             NativeMethods.close(fd);
