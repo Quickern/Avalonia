@@ -61,6 +61,7 @@ namespace Avalonia.Wayland
             ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             WlScreens = new WlScreens(this);
 
+            var wlDataHandler = new WlDataHandler(this);
             AvaloniaLocator.CurrentMutable.BindToSelf(this)
                 .Bind<IWindowingPlatform>().ToConstant(this)
                 .Bind<IPlatformThreadingInterface>().ToConstant(new WlPlatformThreading(this))
@@ -69,7 +70,8 @@ namespace Avalonia.Wayland
                 .Bind<PlatformHotkeyConfiguration>().ToConstant(new PlatformHotkeyConfiguration(KeyModifiers.Control))
                 .Bind<IKeyboardDevice>().ToConstant(new KeyboardDevice())
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
-                .Bind<IClipboard>().ToConstant(new WlDataHandler(this))
+                .Bind<IClipboard>().ToConstant(wlDataHandler)
+                .Bind<IPlatformDragSource>().ToConstant(wlDataHandler)
                 .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
                 .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
