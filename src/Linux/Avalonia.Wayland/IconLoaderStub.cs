@@ -1,16 +1,19 @@
 using System.IO;
-
 using Avalonia.Platform;
-
 
 namespace Avalonia.Wayland
 {
     internal class IconLoaderStub : IPlatformIconLoader
     {
-        public IWindowIconImpl LoadIcon(string fileName) => null;
+        private sealed class IconStub : IWindowIconImpl
+        {
+            public void Save(Stream outputStream) { }
+        }
 
-        public IWindowIconImpl LoadIcon(Stream stream) => null;
+        public IWindowIconImpl LoadIcon(string fileName) => new IconStub();
 
-        public IWindowIconImpl LoadIcon(IBitmapImpl bitmap) => null;
+        public IWindowIconImpl LoadIcon(Stream stream) => new IconStub();
+
+        public IWindowIconImpl LoadIcon(IBitmapImpl bitmap) => new IconStub();
     }
 }
