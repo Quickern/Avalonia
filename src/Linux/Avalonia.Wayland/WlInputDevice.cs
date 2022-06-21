@@ -344,7 +344,7 @@ namespace Avalonia.Wayland
                     var size = LibXkbCommon.xkb_compose_state_get_utf8(_xkbComposeState, null, 0) + 1;
                     var buffer = stackalloc byte[size];
                     LibXkbCommon.xkb_compose_state_get_utf8(_xkbComposeState, buffer, size);
-                    return Encoding.UTF8.GetString(buffer, size);
+                    return Encoding.UTF8.GetString(buffer, size - 1);
                 }
                 case LibXkbCommon.XkbComposeStatus.XKB_COMPOSE_CANCELLED:
                 {
@@ -356,7 +356,8 @@ namespace Avalonia.Wayland
                     var size = LibXkbCommon.xkb_state_key_get_utf8(_xkbState, code, null, 0) + 1;
                     var buffer = stackalloc byte[size];
                     LibXkbCommon.xkb_state_key_get_utf8(_xkbState, code, buffer, size);
-                    return Encoding.UTF8.GetString(buffer, size);
+                    var text = Encoding.UTF8.GetString(buffer, size - 1);
+                    return text.Length == 1 && (text[0] < ' ' || text[0] == 0x7f) ? null : text; // Filer control codes or DEL
                 }
                 case LibXkbCommon.XkbComposeStatus.XKB_COMPOSE_COMPOSING:
                 default:
