@@ -30,13 +30,12 @@ namespace Avalonia.Wayland
 
         private TimeSpan _repeatDelay;
         private TimeSpan _repeatInterval;
+        private bool _firstRepeat;
         private uint _repeatTime;
         private uint _repeatCode;
-        private bool _firstRepeat;
+        private XkbKey _repeatSym;
+        private Key _repeatKey;
         private IDisposable? _timer;
-
-        private Key _currentKey;
-        private string? _currentText;
 
         private int _ctrlMask;
         private int _altMask;
@@ -225,29 +224,34 @@ namespace Avalonia.Wayland
             Serial = serial;
             var code = key + 8;
             var sym = LibXkbCommon.xkb_state_key_get_one_sym(_xkbState, code);
-            _currentKey = XkbKeyTransform.ConvertKey(sym);
+            var avaloniaKey = XkbKeyTransform.ConvertKey(sym);
             var eventType = state == WlKeyboard.KeyStateEnum.Pressed ? RawKeyEventType.KeyDown : RawKeyEventType.KeyUp;
-            var keyEventArgs = new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, eventType, _currentKey, RawInputModifiers);
+            var keyEventArgs = new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, eventType, avaloniaKey, RawInputModifiers);
             _topLevelImpl.Input?.Invoke(keyEventArgs);
-            if (state == WlKeyboard.KeyStateEnum.Released && _repeatCode == code)
+
+            if (state == WlKeyboard.KeyStateEnum.Pressed)
+            {
+                var text = GetComposedString(sym, code);
+                if (text is not null)
+                {
+                    var textEventArgs = new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, text);
+                    _topLevelImpl.Input?.Invoke(textEventArgs);
+                }
+
+                if (LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code) && _repeatInterval > TimeSpan.Zero)
+                {
+                    _timer?.Dispose();
+                    _firstRepeat = true;
+                    _repeatTime = time;
+                    _repeatCode = code;
+                    _repeatSym = sym;
+                    _repeatKey = avaloniaKey;
+                    _timer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatDelay, OnRepeatKey);
+                }
+            }
+            else if (_repeatKey == avaloniaKey)
             {
                 _timer?.Dispose();
-                _timer = null;
-                _currentText = null;
-            }
-            else if (state == WlKeyboard.KeyStateEnum.Pressed)
-            {
-                _currentText = GetComposedString(sym, code);
-                if (_currentText is null)
-                    return;
-                var textEventArgs = new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, _currentText);
-                _topLevelImpl.Input?.Invoke(textEventArgs );
-                if (_repeatInterval == TimeSpan.Zero || !LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code))
-                    return;
-                _repeatCode = code;
-                _repeatTime = time;
-                _firstRepeat = true;
-                _timer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatDelay, OnRepeatKey);
             }
         }
 
@@ -310,10 +314,10 @@ namespace Avalonia.Wayland
 
         private void OnRepeatKey()
         {
-            _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, InputRoot, RawKeyEventType.KeyDown, _currentKey, RawInputModifiers));
-            if (_currentText is null)
-                return;
-            _topLevelImpl.Input?.Invoke( new RawTextInputEventArgs(KeyboardDevice!, _repeatTime, InputRoot, _currentText));
+            _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, InputRoot, RawKeyEventType.KeyDown, _repeatKey, RawInputModifiers));
+            var text = GetComposedString(_repeatSym, _repeatCode);
+            if (text is not null)
+                _topLevelImpl.Input?.Invoke( new RawTextInputEventArgs(KeyboardDevice!, _repeatTime, InputRoot, text));
             if (!_firstRepeat)
                 return;
             _firstRepeat = false;
@@ -361,9 +365,7 @@ namespace Avalonia.Wayland
                 }
                 case LibXkbCommon.XkbComposeStatus.XKB_COMPOSE_COMPOSING:
                 default:
-                {
                     return null;
-                }
             }
         }
     }
