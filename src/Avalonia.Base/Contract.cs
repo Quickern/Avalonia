@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 
@@ -23,7 +24,7 @@ namespace Avalonia
         /// <param name="condition">The precondition.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [ContractAnnotation("condition:false=>stop")]
-        public static void Requires<TException>(bool condition) where TException : Exception, new()
+        public static void Requires<TException>([DoesNotReturnIf(false)] bool condition) where TException : Exception, new()
         {
             if (!condition)
             {

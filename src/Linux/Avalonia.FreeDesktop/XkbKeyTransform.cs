@@ -3,8 +3,11 @@ using Avalonia.Input;
 
 namespace Avalonia.FreeDesktop
 {
-    public static class XkbKeyTransform
+    internal static class XkbKeyTransform
     {
+        public static Key ConvertKey(XkbKey key)
+            => _keyDic.TryGetValue(key, out var result) ? result : Key.None;
+
         private static readonly Dictionary<XkbKey, Key> _keyDic = new()
         {
             { XkbKey.Cancel, Key.Cancel },
@@ -239,8 +242,5 @@ namespace Avalonia.FreeDesktop
             //{ X11Key.?, Key.OemClear }
             //{ X11Key.?, Key.DeadCharProcessed }
         };
-
-        public static Key ConvertKey(XkbKey key)
-            => _keyDic.TryGetValue(key, out var result) ? result : Key.None;
     }
 }

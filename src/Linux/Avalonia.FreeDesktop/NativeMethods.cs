@@ -94,7 +94,7 @@ namespace Avalonia.FreeDesktop
         public static string ReadLink(string path)
         {
             var symlinkSize = Encoding.UTF8.GetByteCount(path);
-            var bufferSize = 4097; // PATH_MAX is (usually?) 4096, but we need to know if the result was truncated
+            const int bufferSize = 4097; // PATH_MAX is (usually?) 4096, but we need to know if the result was truncated
 
             var symlink = ArrayPool<byte>.Shared.Rent(symlinkSize + 1);
             var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -123,7 +123,7 @@ namespace Avalonia.FreeDesktop
         public int   fd;         /* file descriptor */
         public short events;     /* requested events */
         public short revents;    /* returned events */
-    };
+    }
 
     public enum FbIoCtl : uint
     {
@@ -194,7 +194,7 @@ namespace Avalonia.FreeDesktop
 
         public uint msb_right; /* != 0 : Most significant bit is */
         /* right */
-    };
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct fb_var_screeninfo
@@ -235,7 +235,7 @@ namespace Avalonia.FreeDesktop
         public uint sync; /* see FB_SYNC_*		*/
         public uint vmode; /* see FB_VMODE_*		*/
         public fixed uint reserved[6]; /* Reserved for future compatibility */
-    };
+    }
 
 
     public enum EvType

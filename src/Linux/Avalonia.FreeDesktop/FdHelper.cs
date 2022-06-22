@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 
-
 namespace Avalonia.FreeDesktop
 {
     internal static class FdHelper

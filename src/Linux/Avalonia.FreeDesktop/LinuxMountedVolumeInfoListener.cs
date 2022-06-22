@@ -1,14 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Controls.Platform;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Avalonia.FreeDesktop
 {
@@ -17,14 +14,14 @@ namespace Avalonia.FreeDesktop
         private const string DevByLabelDir = "/dev/disk/by-label/";
         private const string ProcPartitionsDir = "/proc/partitions";
         private const string ProcMountsDir = "/proc/mounts";
-        private CompositeDisposable _disposables;
-        private ObservableCollection<MountedVolumeInfo> _targetObs;
-        private bool _beenDisposed = false;
+        private readonly CompositeDisposable _disposables;
+        private readonly ObservableCollection<MountedVolumeInfo> _targetObs;
+        private bool _beenDisposed;
 
         public LinuxMountedVolumeInfoListener(ref ObservableCollection<MountedVolumeInfo> target)
         {
             _disposables = new CompositeDisposable();
-            this._targetObs = target;
+            _targetObs = target;
 
             var pollTimer = Observable.Interval(TimeSpan.FromSeconds(1))
                                       .Subscribe(Poll);
@@ -34,14 +31,14 @@ namespace Avalonia.FreeDesktop
             Poll(0);
         }
 
-        private string GetSymlinkTarget(string x) => Path.GetFullPath(Path.Combine(DevByLabelDir, NativeMethods.ReadLink(x)));
+        private static string GetSymlinkTarget(string x) => Path.GetFullPath(Path.Combine(DevByLabelDir, NativeMethods.ReadLink(x)));
 
-        private string UnescapeString(string input, string regexText, int escapeBase) =>
+        private static string UnescapeString(string input, string regexText, int escapeBase) =>
             new Regex(regexText).Replace(input, m => Convert.ToChar(Convert.ToByte(m.Groups[1].Value, escapeBase)).ToString());
 
-        private string UnescapePathFromProcMounts(string input) => UnescapeString(input, @"\\(\d{3})", 8);
+        private static string UnescapePathFromProcMounts(string input) => UnescapeString(input, @"\\(\d{3})", 8);
 
-        private string UnescapeDeviceLabel(string input) => UnescapeString(input, @"\\x([0-9a-f]{2})", 16);
+        private static string UnescapeDeviceLabel(string input) => UnescapeString(input, @"\\x([0-9a-f]{2})", 16);
 
         private void Poll(long _)
         {
@@ -67,7 +64,7 @@ namespace Avalonia.FreeDesktop
                      join device in fProcPartitions on mount.Item1 equals device.Item2
                      join label in labelDevPathPairs on device.Item2 equals label.Item1 into labelMatches
                      from x in labelMatches.DefaultIfEmpty()
-                     select new MountedVolumeInfo()
+                     select new MountedVolumeInfo
                      {
                          VolumePath = mount.Item2,
                          VolumeSizeBytes = device.Item1,
@@ -78,27 +75,22 @@ namespace Avalonia.FreeDesktop
 
             if (_targetObs.SequenceEqual(mountVolInfos))
                 return;
-            else
-            {
-                _targetObs.Clear();
-
-                foreach (var i in mountVolInfos)
-                    _targetObs.Add(i);
-            }
+            _targetObs.Clear();
+            foreach (var i in mountVolInfos)
+                _targetObs.Add(i);
         }
 
-        protected virtual void Dispose(bool disposing)
+        protected void Dispose(bool disposing)
         {
-            if (!_beenDisposed)
+            if (_beenDisposed)
+                return;
+            if (disposing)
             {
-                if (disposing)
-                {
-                    _disposables.Dispose();
-                    _targetObs.Clear();
-                }
-
-                _beenDisposed = true;
+                _disposables.Dispose();
+                _targetObs.Clear();
             }
+
+            _beenDisposed = true;
         }
 
         public void Dispose()

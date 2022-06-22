@@ -1,6 +1,6 @@
 namespace Avalonia.FreeDesktop
 {
-    public enum XkbKey
+    internal enum XkbKey
     {
         VoidSymbol = 0xffffff /* Void symbol */,
         BackSpace = 0xff08 /* Back space, back char */,

@@ -15,7 +15,7 @@ using Tmds.DBus;
 
 namespace Avalonia.FreeDesktop
 {
-    public class DBusMenuExporter
+    internal class DBusMenuExporter
     {
         public static ITopLevelNativeMenuExporter TryCreateTopLevelNativeMenu(IntPtr xid)
         {
@@ -24,7 +24,7 @@ namespace Avalonia.FreeDesktop
 
             return new DBusMenuExporterImpl(DBusHelper.Connection, xid);
         }
-        
+
         public static INativeMenuExporter TryCreateDetachedNativeMenu(ObjectPath path, Connection currentConection)
         {
             return new DBusMenuExporterImpl(currentConection, path);
@@ -47,7 +47,7 @@ namespace Avalonia.FreeDesktop
             private bool _resetQueued;
             private int _nextId = 1;
             private bool _appMenu = true;
-            
+
             public DBusMenuExporterImpl(Connection dbus, IntPtr xid)
             {
                 _dbus = dbus;
@@ -65,7 +65,7 @@ namespace Avalonia.FreeDesktop
                 SetNativeMenu(new NativeMenu());
                 Init();
             }
-            
+
             async void Init()
             {
                 try
@@ -120,21 +120,21 @@ namespace Avalonia.FreeDesktop
                     ((INotifyCollectionChanged)_menu.Items).CollectionChanged -= OnMenuItemsChanged;
                 _menu = menu;
                 ((INotifyCollectionChanged)_menu.Items).CollectionChanged += OnMenuItemsChanged;
-                
+
                 DoLayoutReset();
             }
-            
+
             /*
                  This is basic initial implementation, so we don't actually track anything and
                  just reset the whole layout on *ANY* change
-                 
+
                  This is not how it should work and will prevent us from implementing various features,
                  but that's the fastest way to get things working, so...
              */
             void DoLayoutReset()
             {
                 _resetQueued = false;
-                foreach (var i in _idsToItems.Values) 
+                foreach (var i in _idsToItems.Values)
                     i.PropertyChanged -= OnItemPropertyChanged;
                 foreach(var menu in _menus)
                     ((INotifyCollectionChanged)menu.Items).CollectionChanged -= OnMenuItemsChanged;
@@ -166,7 +166,7 @@ namespace Avalonia.FreeDesktop
                 if(menu!=null && _menus.Add(menu))
                     ((INotifyCollectionChanged)menu.Items).CollectionChanged += OnMenuItemsChanged;
             }
-            
+
             private int GetId(NativeMenuItemBase item)
             {
                 if (_itemsToIds.TryGetValue(item, out var id))
@@ -215,7 +215,7 @@ namespace Avalonia.FreeDesktop
             {
                 "type", "label", "enabled", "visible", "shortcut", "toggle-type", "children-display", "toggle-state", "icon-data"
             };
-            
+
             object GetProperty((NativeMenuItemBase item, NativeMenu menu) i, string name)
             {
                 var (it, menu) = i;
@@ -276,7 +276,7 @@ namespace Avalonia.FreeDesktop
                         if (item.ToggleType != NativeMenuItemToggleType.None)
                             return item.IsChecked ? 1 : 0;
                     }
-                    
+
                     if (name == "icon-data")
                     {
                         if (item.Icon != null)
@@ -293,7 +293,7 @@ namespace Avalonia.FreeDesktop
                             }
                         }
                     }
-                    
+
                     if (name == "children-display")
                         return menu != null ? "submenu" : null;
                 }
@@ -317,7 +317,7 @@ namespace Avalonia.FreeDesktop
                 return _reusablePropertyList.ToArray();
             }
 
-            
+
             public Task SetAsync(string prop, object val) => Task.CompletedTask;
 
             public Task<(uint revision, (int, KeyValuePair<string, object>[], object[]) layout)> GetLayoutAsync(
@@ -386,7 +386,7 @@ namespace Avalonia.FreeDesktop
                     }
                 }
             }
-            
+
             public Task EventAsync(int Id, string EventId, object Data, uint Timestamp)
             {
                 HandleEvent(Id, EventId, Data, Timestamp);
