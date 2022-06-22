@@ -1,3 +1,4 @@
+using System;
 using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
@@ -15,7 +16,7 @@ namespace Avalonia.Wayland
             _wlCursorImages = new WlCursorImage[ImageCount];
         }
 
-        public override WlCursorImage this[uint index]
+        public override WlCursorImage this[int index]
         {
             get
             {
@@ -27,7 +28,8 @@ namespace Avalonia.Wayland
                 var wlBuffer = new WlBuffer(rawBuffer, WlBuffer.InterfaceVersion, _platform.WlDisplay);
                 var size = new PixelSize((int)image->width, (int)image->height);
                 var hotspot = new PixelPoint((int)image->hotspot_x, (int)image->hotspot_y);
-                return _wlCursorImages[index] = new WlCursorImage(wlBuffer, size, hotspot);
+                var delay = TimeSpan.FromMilliseconds(image->delay);
+                return _wlCursorImages[index] = new WlCursorImage(wlBuffer, size, hotspot, delay);
             }
         }
 

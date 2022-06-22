@@ -50,7 +50,7 @@ namespace Avalonia.Wayland
                     break;
                 }
 
-                var timeout = nextTick == new TimeSpan(-1) ? -1 : Math.Max(1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
+                var timeout = nextTick == new TimeSpan(-1) ? -1 : Math.Max(-1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
                 var ret = NativeMethods.poll(&pollFd, new IntPtr(1), timeout);
 
                 if (cancellationToken.IsCancellationRequested || ret < 0)

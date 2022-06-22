@@ -15,9 +15,9 @@ namespace Avalonia.Wayland
         private readonly int _fd;
         private readonly int _size;
         private readonly IntPtr _data;
-        private readonly WlShmPool? _wlShmPool;
-        private readonly WlBuffer? _wlBuffer;
-        private readonly WlCursorImage? _wlCursorImage;
+        private readonly WlShmPool _wlShmPool;
+        private readonly WlBuffer _wlBuffer;
+        private readonly WlCursorImage _wlCursorImage;
 
         public WlBitmapCursor(AvaloniaWaylandPlatform platform, IBitmapImpl cursor, PixelPoint hotspot) : base(1)
         {
@@ -35,15 +35,15 @@ namespace Avalonia.Wayland
             using var ctx = renderTarget.CreateDrawingContext(null);
             var r = new Rect(cursor.PixelSize.ToSize(1));
             ctx.DrawBitmap(RefCountable.CreateUnownedNotClonable(cursor), 1, r, r);
-            _wlCursorImage = new WlCursorImage(_wlBuffer, cursor.PixelSize, hotspot);
+            _wlCursorImage = new WlCursorImage(_wlBuffer, cursor.PixelSize, hotspot, TimeSpan.Zero);
         }
 
-        public override WlCursorImage? this[uint index] => _wlCursorImage;
+        public override WlCursorImage this[int index] => _wlCursorImage;
 
         public override void Dispose()
         {
-            _wlBuffer?.Dispose();
-            _wlShmPool?.Dispose();
+            _wlBuffer.Dispose();
+            _wlShmPool.Dispose();
             if (_data != IntPtr.Zero)
                 NativeMethods.munmap(_data, new IntPtr(_size));
             if (_fd != -1)

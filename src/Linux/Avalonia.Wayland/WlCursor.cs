@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Platform;
 using NWayland.Protocols.Wayland;
 
@@ -10,7 +11,7 @@ namespace Avalonia.Wayland
             ImageCount = imageCount;
         }
 
-        public abstract WlCursorImage? this[uint index]
+        public abstract WlCursorImage this[int index]
         {
             get;
         }
@@ -21,16 +22,21 @@ namespace Avalonia.Wayland
 
         public class WlCursorImage
         {
-            public WlCursorImage(WlBuffer wlBuffer, PixelSize size, PixelPoint hotspot)
+            public WlCursorImage(WlBuffer wlBuffer, PixelSize size, PixelPoint hotspot, TimeSpan delay)
             {
                 WlBuffer = wlBuffer;
                 Size = size;
                 Hotspot = hotspot;
+                Delay = delay;
             }
 
             public WlBuffer WlBuffer { get; }
+
             public PixelSize Size { get; }
+
             public PixelPoint Hotspot { get; }
+
+            public TimeSpan Delay { get; }
         }
     }
 }

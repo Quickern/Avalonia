@@ -75,9 +75,12 @@ namespace Avalonia.Wayland
         {
             private readonly WlCursorImage _wlCursorImage;
 
-            public WlNoCursor() : base(1) => _wlCursorImage = new WlCursorImage(null!, PixelSize.Empty, PixelPoint.Origin);
+            public WlNoCursor() : base(1)
+            {
+                _wlCursorImage = new WlCursorImage(null!, PixelSize.Empty, PixelPoint.Origin, TimeSpan.Zero);
+            }
 
-            public override WlCursorImage this[uint index] => _wlCursorImage;
+            public override WlCursorImage this[int index] => _wlCursorImage;
 
             public override void Dispose() { }
         }

@@ -21,7 +21,11 @@ namespace Avalonia.Wayland
         private WlPointer? _wlPointer;
         private WlKeyboard? _wlKeyboard;
         private WlTouch? _wlTouch;
+
         private Point _pointerPosition;
+        private WlCursor? _currentCursor;
+        private int _currentCursorImageIndex;
+        private IDisposable? _pointerTimer;
 
         private IntPtr _xkbContext;
         private IntPtr _xkbKeymap;
@@ -35,7 +39,7 @@ namespace Avalonia.Wayland
         private uint _repeatCode;
         private XkbKey _repeatSym;
         private Key _repeatKey;
-        private IDisposable? _timer;
+        private IDisposable? _keyboardTimer;
 
         private int _ctrlMask;
         private int _altMask;
@@ -70,16 +74,20 @@ namespace Avalonia.Wayland
 
         public void SetCursor(WlCursor? wlCursor)
         {
+            _pointerTimer?.Dispose();
             wlCursor ??= _cursorFactory.GetCursor(StandardCursorType.Arrow) as WlCursor;
             if (_wlPointer is null || wlCursor is null || wlCursor.ImageCount <= 0)
                 return;
-            var cursorImage = wlCursor[0];
-            if (cursorImage is null)
-                return;
-            _pointerSurface.Attach(cursorImage.WlBuffer, 0, 0);
-            _pointerSurface.Damage(0, 0, cursorImage.Size.Width, cursorImage.Size.Height);
-            _pointerSurface.Commit();
-            _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, cursorImage.Hotspot.X, cursorImage.Hotspot.Y);
+            _currentCursor = wlCursor;
+            if (wlCursor.ImageCount == 1)
+            {
+                SetCursorImage(wlCursor[0]);
+            }
+            else
+            {
+                _currentCursorImageIndex = -1;
+                _pointerTimer = _platformThreading.StartTimer(DispatcherPriority.Render, wlCursor[0].Delay, OnCursorAnimation);
+            }
         }
 
         public void OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)
@@ -240,18 +248,18 @@ namespace Avalonia.Wayland
 
                 if (LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code) && _repeatInterval > TimeSpan.Zero)
                 {
-                    _timer?.Dispose();
+                    _keyboardTimer?.Dispose();
                     _firstRepeat = true;
                     _repeatTime = time;
                     _repeatCode = code;
                     _repeatSym = sym;
                     _repeatKey = avaloniaKey;
-                    _timer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatDelay, OnRepeatKey);
+                    _keyboardTimer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatDelay, OnRepeatKey);
                 }
             }
             else if (_repeatKey == avaloniaKey)
             {
-                _timer?.Dispose();
+                _keyboardTimer?.Dispose();
             }
         }
 
@@ -273,8 +281,8 @@ namespace Avalonia.Wayland
 
         public void OnRepeatInfo(WlKeyboard eventSender, int rate, int delay)
         {
-            _repeatDelay = new TimeSpan(delay * TimeSpan.TicksPerMillisecond);
-            _repeatInterval = new TimeSpan(TimeSpan.TicksPerSecond / rate);
+            _repeatDelay = TimeSpan.FromMilliseconds(delay);
+            _repeatInterval = TimeSpan.FromSeconds(1f / rate);
         }
 
         public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, int x, int y)
@@ -312,6 +320,18 @@ namespace Avalonia.Wayland
 
         }
 
+        public void Dispose()
+        {
+            if (_xkbContext != IntPtr.Zero)
+                LibXkbCommon.xkb_context_unref(_xkbContext);
+            _keyboardTimer?.Dispose();
+            _wlPointer?.Dispose();
+            _wlKeyboard?.Dispose();
+            _wlTouch?.Dispose();
+            MouseDevice?.Dispose();
+            TouchDevice?.Dispose();
+        }
+
         private void OnRepeatKey()
         {
             _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, InputRoot, RawKeyEventType.KeyDown, _repeatKey, RawInputModifiers));
@@ -321,20 +341,8 @@ namespace Avalonia.Wayland
             if (!_firstRepeat)
                 return;
             _firstRepeat = false;
-            _timer?.Dispose();
-            _timer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatInterval, OnRepeatKey);
-        }
-
-        public void Dispose()
-        {
-            if (_xkbContext != IntPtr.Zero)
-                LibXkbCommon.xkb_context_unref(_xkbContext);
-            _timer?.Dispose();
-            _wlPointer?.Dispose();
-            _wlKeyboard?.Dispose();
-            _wlTouch?.Dispose();
-            MouseDevice?.Dispose();
-            TouchDevice?.Dispose();
+            _keyboardTimer?.Dispose();
+            _keyboardTimer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatInterval, OnRepeatKey);
         }
 
         private unsafe string? GetComposedString(XkbKey sym, uint code)
@@ -367,6 +375,27 @@ namespace Avalonia.Wayland
                 default:
                     return null;
             }
+        }
+
+        private void OnCursorAnimation()
+        {
+            var oldImage = _currentCursorImageIndex == -1 ? null : _currentCursor![_currentCursorImageIndex];
+            if (++_currentCursorImageIndex >= _currentCursor!.ImageCount)
+                _currentCursorImageIndex = 0;
+            var newImage = _currentCursor[_currentCursorImageIndex];
+            SetCursorImage(newImage);
+            if (oldImage is null || oldImage.Delay == newImage.Delay)
+                return;
+            _pointerTimer?.Dispose();
+            _pointerTimer = _platformThreading.StartTimer(DispatcherPriority.Render, newImage.Delay, OnCursorAnimation);
+        }
+
+        private void SetCursorImage(WlCursor.WlCursorImage cursorImage)
+        {
+            _pointerSurface.Attach(cursorImage.WlBuffer, 0, 0);
+            _pointerSurface.Damage(0, 0, cursorImage.Size.Width, cursorImage.Size.Height);
+            _pointerSurface.Commit();
+            _wlPointer!.SetCursor(PointerSurfaceSerial, _pointerSurface, cursorImage.Hotspot.X, cursorImage.Hotspot.Y);
         }
     }
 }
