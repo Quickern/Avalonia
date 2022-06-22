@@ -5,7 +5,7 @@ using System.Threading;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
-using static Avalonia.FreeDesktop.NativeMethods;
+using static Avalonia.FreeDesktop.LibC;
 
 namespace Avalonia.LinuxFramebuffer.Input.EvDev
 {

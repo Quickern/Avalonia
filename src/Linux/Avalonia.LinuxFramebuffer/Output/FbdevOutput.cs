@@ -38,7 +38,7 @@ namespace Avalonia.LinuxFramebuffer
         public FbdevOutput(string fileName, PixelFormat? format)
         {
             fileName ??= Environment.GetEnvironmentVariable("FRAMEBUFFER") ?? "/dev/fb0";
-            _fd = NativeMethods.open(fileName, 2, 0);
+            _fd = LibC.open(fileName, 2, 0);
             if (_fd <= 0)
                 throw new Exception("Error: " + Marshal.GetLastWin32Error());
 
@@ -53,81 +53,83 @@ namespace Avalonia.LinuxFramebuffer
             }
         }
 
-        void Init(PixelFormat? format)
+        private void Init(PixelFormat? format)
         {
             fixed (void* pnfo = &_varInfo)
             {
-                if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
+                if (-1 == LibC.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
                     throw new Exception("FBIOGET_VSCREENINFO error: " + Marshal.GetLastWin32Error());
 
                 if (format.HasValue)
                 {
                     SetBpp(format.Value);
 
-                    if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo))
+                    if (-1 == LibC.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo))
                         _varInfo.transp = new fb_bitfield();
 
-                    NativeMethods.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo);
+                    LibC.ioctl(_fd, FbIoCtl.FBIOPUT_VSCREENINFO, pnfo);
 
-                    if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
+                    if (-1 == LibC.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, pnfo))
                         throw new Exception("FBIOGET_VSCREENINFO error: " + Marshal.GetLastWin32Error());
 
                     if (_varInfo.bits_per_pixel != 32)
                         throw new Exception("Unable to set 32-bit display mode");
                 }
             }
-            fixed(void*pnfo = &_fixedInfo)
-                if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_FSCREENINFO, pnfo))
+            fixed (void* pnfo = &_fixedInfo)
+            {
+                if (-1 == LibC.ioctl(_fd, FbIoCtl.FBIOGET_FSCREENINFO, pnfo))
                     throw new Exception("FBIOGET_FSCREENINFO error: " + Marshal.GetLastWin32Error());
+            }
 
             _mappedLength = new IntPtr(_fixedInfo.line_length * _varInfo.yres);
-            _mappedAddress = NativeMethods.mmap(IntPtr.Zero, _mappedLength, 3, 1, _fd, IntPtr.Zero);
+            _mappedAddress = LibC.mmap(IntPtr.Zero, _mappedLength, MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, _fd, IntPtr.Zero);
             if (_mappedAddress == new IntPtr(-1))
                 throw new Exception($"Unable to mmap {_mappedLength} bytes, error {Marshal.GetLastWin32Error()}");
             fixed (fb_fix_screeninfo* pnfo = &_fixedInfo)
             {
                 int idlen;
-                for (idlen = 0; idlen < 16 && pnfo->id[idlen] != 0; idlen++) ;
+                for (idlen = 0; idlen < 16 && pnfo->id[idlen] != 0; idlen++) { }
                 Id = Encoding.ASCII.GetString(pnfo->id, idlen);
             }
         }
 
-        void SetBpp(PixelFormat format)
+        private void SetBpp(PixelFormat format)
         {
             switch (format)
             {
-            case PixelFormat.Rgba8888:
-                _varInfo.bits_per_pixel = 32;
-                _varInfo.grayscale = 0;
-                _varInfo.red = _varInfo.blue = _varInfo.green = _varInfo.transp = new fb_bitfield
-                {
-                    length = 8
-                };
-                _varInfo.green.offset = 8;
-                _varInfo.blue.offset = 16;
-                _varInfo.transp.offset = 24;
-                 break;
-            case PixelFormat.Bgra8888:
-                _varInfo.bits_per_pixel = 32;
-                _varInfo.grayscale = 0;
-                _varInfo.red = _varInfo.blue = _varInfo.green = _varInfo.transp = new fb_bitfield
-                {
-                    length = 8
-                };
-                _varInfo.green.offset = 8;
-                _varInfo.red.offset = 16;
-                _varInfo.transp.offset = 24;
-                 break;
-            case PixelFormat.Rgb565:
-                _varInfo.bits_per_pixel = 16;
-                _varInfo.grayscale = 0;
-                _varInfo.red = _varInfo.blue = _varInfo.green = _varInfo.transp = new fb_bitfield();
-                _varInfo.red.length = 5;
-                _varInfo.green.offset = 5;
-                _varInfo.green.length = 6;
-                _varInfo.blue.offset = 11;
-                _varInfo.blue.length = 5;
-                 break;
+                case PixelFormat.Rgba8888:
+                    _varInfo.bits_per_pixel = 32;
+                    _varInfo.grayscale = 0;
+                    _varInfo.red = _varInfo.blue = _varInfo.green = _varInfo.transp = new fb_bitfield
+                    {
+                        length = 8
+                    };
+                    _varInfo.green.offset = 8;
+                    _varInfo.blue.offset = 16;
+                    _varInfo.transp.offset = 24;
+                     break;
+                case PixelFormat.Bgra8888:
+                    _varInfo.bits_per_pixel = 32;
+                    _varInfo.grayscale = 0;
+                    _varInfo.red = _varInfo.blue = _varInfo.green = _varInfo.transp = new fb_bitfield
+                    {
+                        length = 8
+                    };
+                    _varInfo.green.offset = 8;
+                    _varInfo.red.offset = 16;
+                    _varInfo.transp.offset = 24;
+                     break;
+                case PixelFormat.Rgb565:
+                    _varInfo.bits_per_pixel = 16;
+                    _varInfo.grayscale = 0;
+                    _varInfo.red = _varInfo.blue = _varInfo.green = _varInfo.transp = new fb_bitfield();
+                    _varInfo.red.length = 5;
+                    _varInfo.green.offset = 5;
+                    _varInfo.green.length = 6;
+                    _varInfo.blue.offset = 11;
+                    _varInfo.blue.length = 5;
+                     break;
             }
         }
 
@@ -138,7 +140,7 @@ namespace Avalonia.LinuxFramebuffer
             get
             {
                 fb_var_screeninfo nfo;
-                if (-1 == NativeMethods.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, &nfo))
+                if (-1 == LibC.ioctl(_fd, FbIoCtl.FBIOGET_VSCREENINFO, &nfo))
                     throw new Exception("FBIOGET_VSCREENINFO error: " + Marshal.GetLastWin32Error());
                 return new PixelSize((int)nfo.xres, (int)nfo.yres);
             }
@@ -158,12 +160,12 @@ namespace Avalonia.LinuxFramebuffer
         {
             if (_mappedAddress != IntPtr.Zero)
             {
-                NativeMethods.munmap(_mappedAddress, _mappedLength);
+                LibC.munmap(_mappedAddress, _mappedLength);
                 _mappedAddress = IntPtr.Zero;
             }
             if(_fd == 0)
                 return;
-            NativeMethods.close(_fd);
+            LibC.close(_fd);
             _fd = 0;
         }
 

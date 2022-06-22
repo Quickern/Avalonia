@@ -14,7 +14,7 @@ namespace Avalonia.LinuxFramebuffer.Input.LibInput
 
         static int OpenRestricted(IntPtr path, int flags, IntPtr userData)
         {
-            var fd = NativeMethods.open(Marshal.PtrToStringAnsi(path), flags, 0);
+            var fd = LibC.open(Marshal.PtrToStringAnsi(path), flags, 0);
             if (fd == -1)
                 return -Marshal.GetLastWin32Error();
 
@@ -23,7 +23,7 @@ namespace Avalonia.LinuxFramebuffer.Input.LibInput
 
         static void CloseRestricted(int fd, IntPtr userData)
         {
-            NativeMethods.close(fd);
+            LibC.close(fd);
         }
 
         private static readonly IntPtr* s_Interface;

@@ -7,7 +7,7 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.OpenGL.Surfaces;
 using Avalonia.Platform.Interop;
-using static Avalonia.FreeDesktop.NativeMethods;
+using static Avalonia.FreeDesktop.LibC;
 using static Avalonia.LinuxFramebuffer.Output.LibDrm;
 
 namespace Avalonia.LinuxFramebuffer.Output

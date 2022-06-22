@@ -27,7 +27,7 @@ namespace Avalonia.Wayland
             _fd = FdHelper.CreateAnonymousFile(_size);
             if (_fd == -1)
                 throw new NWaylandException("Failed to create FrameBuffer");
-            _data = NativeMethods.mmap(IntPtr.Zero, new IntPtr(_size), NativeMethods.PROT_READ | NativeMethods.PROT_WRITE, NativeMethods.MAP_SHARED, _fd, IntPtr.Zero);
+            _data = LibC.mmap(IntPtr.Zero, new IntPtr(_size), MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, _fd, IntPtr.Zero);
             _wlShmPool= platform.WlShm.CreatePool(_fd, _size);
             _wlBuffer = _wlShmPool.CreateBuffer(0, cursor.PixelSize.Width, cursor.PixelSize.Height, _stride, WlShm.FormatEnum.Argb8888);
             var platformRenderInterface = AvaloniaLocator.Current.GetRequiredService<IPlatformRenderInterface>();
@@ -45,9 +45,9 @@ namespace Avalonia.Wayland
             _wlBuffer.Dispose();
             _wlShmPool.Dispose();
             if (_data != IntPtr.Zero)
-                NativeMethods.munmap(_data, new IntPtr(_size));
+                LibC.munmap(_data, new IntPtr(_size));
             if (_fd != -1)
-                NativeMethods.close(_fd);
+                LibC.close(_fd);
         }
 
         public ILockedFramebuffer Lock() => new LockedFramebuffer(_data, _cursor.PixelSize, _stride, new Vector(96, 96), PixelFormat.Bgra8888, null);

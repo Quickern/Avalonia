@@ -51,7 +51,7 @@ namespace Avalonia.Wayland
                 }
 
                 var timeout = nextTick == new TimeSpan(-1) ? -1 : Math.Max(-1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
-                var ret = NativeMethods.poll(&pollFd, new IntPtr(1), timeout);
+                var ret = LibC.poll(&pollFd, new IntPtr(1), timeout);
 
                 if (cancellationToken.IsCancellationRequested || ret < 0)
                 {
@@ -135,7 +135,7 @@ namespace Avalonia.Wayland
                     events = (int)EpollEvents.EPOLLOUT
                 };
 
-                while (NativeMethods.poll(&pollFd, new IntPtr(1), -1) == -1)
+                while (LibC.poll(&pollFd, new IntPtr(1), -1) == -1)
                 {
                     if (Marshal.GetLastWin32Error() is not (int)Errno.EINTR and not (int)Errno.EAGAIN)
                         return false;

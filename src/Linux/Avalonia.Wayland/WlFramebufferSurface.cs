@@ -38,7 +38,7 @@ namespace Avalonia.Wayland
                 _fd = FdHelper.CreateAnonymousFile(size);
                 if (_fd == -1)
                     throw new NWaylandException("Failed to create FrameBuffer");
-                _data = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), NativeMethods.PROT_READ | NativeMethods.PROT_WRITE, NativeMethods.MAP_SHARED, _fd, IntPtr.Zero);
+                _data = LibC.mmap(IntPtr.Zero, new IntPtr(size), MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, _fd, IntPtr.Zero);
                 _wlShmPool= _platform.WlShm.CreatePool(_fd, size);
                 _wlBuffer = _wlShmPool.CreateBuffer(0, width, height, stride, WlShm.FormatEnum.Argb8888);
                 _size = size;
@@ -47,11 +47,11 @@ namespace Avalonia.Wayland
             if (size != _size)
             {
                 _wlBuffer!.Dispose();
-                NativeMethods.munmap(_data, new IntPtr(_size));
+                LibC.munmap(_data, new IntPtr(_size));
                 _fd = FdHelper.ResizeFd(_fd, size);
                 if (_fd == -1)
                     throw new NWaylandException("Failed to create FrameBuffer");
-                _data = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), NativeMethods.PROT_READ | NativeMethods.PROT_WRITE, NativeMethods.MAP_SHARED, _fd, IntPtr.Zero);
+                _data = LibC.mmap(IntPtr.Zero, new IntPtr(size), MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, _fd, IntPtr.Zero);
                 _wlShmPool.Resize(size);
                 _wlBuffer = _wlShmPool.CreateBuffer(0, width, height, stride, WlShm.FormatEnum.Argb8888);
                 _size = size;

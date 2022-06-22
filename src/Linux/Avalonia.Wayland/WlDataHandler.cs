@@ -133,9 +133,9 @@ namespace Avalonia.Wayland
 
                 if (content is not null)
                     fixed (byte* ptr = content)
-                        NativeMethods.write(fd, (IntPtr)ptr, content.Length);
+                        LibC.write(fd, (IntPtr)ptr, content.Length);
 
-                NativeMethods.close(fd);
+                LibC.close(fd);
             }
 
             public void OnCancelled(WlDataSource eventSender) => _wlDataSource.Dispose();
@@ -284,14 +284,14 @@ namespace Avalonia.Wayland
                 {
                     while (true)
                     {
-                        var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                        var read = LibC.read(fd, (IntPtr)ptr, 1024);
                         if (read <= 0)
                             break;
                         sb.Append(Encoding.UTF8.GetString(ptr, read));
                     }
                 }
 
-                NativeMethods.close(fd);
+                LibC.close(fd);
                 return sb.ToString();
             }
 
@@ -307,14 +307,14 @@ namespace Avalonia.Wayland
                 {
                     while (true)
                     {
-                        var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                        var read = LibC.read(fd, (IntPtr)ptr, 1024);
                         if (read <= 0)
                             break;
                         sb.Append(Encoding.UTF8.GetString(ptr, read));
                     }
                 }
 
-                NativeMethods.close(fd);
+                LibC.close(fd);
                 return sb.ToString().Split('\n');
             }
 
@@ -333,14 +333,14 @@ namespace Avalonia.Wayland
                 {
                     while (true)
                     {
-                        var read = NativeMethods.read(fd, (IntPtr)ptr, 1024);
+                        var read = LibC.read(fd, (IntPtr)ptr, 1024);
                         if (read <= 0)
                             break;
                         ms.Write(buffer, 0, read);
                     }
                 }
 
-                NativeMethods.close(fd);
+                LibC.close(fd);
                 return ms.ToArray();
             }
 
@@ -355,7 +355,7 @@ namespace Avalonia.Wayland
             private unsafe int Receive(string mimeType)
             {
                 var fds = stackalloc int[2];
-                if (NativeMethods.pipe2(fds, 0) < 0)
+                if (LibC.pipe2(fds, FileDescriptorFlags.O_RDONLY) < 0)
                 {
                     WlDataOffer.Dispose();
                     return -1;
@@ -363,7 +363,7 @@ namespace Avalonia.Wayland
 
                 WlDataOffer.Receive(mimeType, fds[1]);
                 WlDataOffer.Display.Roundtrip();
-                NativeMethods.close(fds[1]);
+                LibC.close(fds[1]);
                 return fds[0];
             }
         }

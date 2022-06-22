@@ -6,10 +6,10 @@ namespace Avalonia.FreeDesktop
     {
         public static int CreateAnonymousFile(int size)
         {
-            var fd = NativeMethods.memfd_create("wayland-shm", NativeMethods.MFD_CLOEXEC | NativeMethods.MFD_ALLOW_SEALING);
+            var fd = LibC.memfd_create("wayland-shm", MemoryFileCreation.MFD_CLOEXEC | MemoryFileCreation.MFD_ALLOW_SEALING);
             if (fd == -1)
                 return -1;
-            NativeMethods.fcntl(fd, NativeMethods.F_ADD_SEALS, NativeMethods.F_SEAL_SHRINK);
+            LibC.fcntl(fd, FileSealCommand.F_ADD_SEALS, FileSeals.F_SEAL_SHRINK);
             return ResizeFd(fd, size);
         }
 
@@ -17,11 +17,11 @@ namespace Avalonia.FreeDesktop
         {
             int ret;
             do
-                ret = NativeMethods.ftruncate(fd, size);
+                ret = LibC.ftruncate(fd, size);
             while (ret < 0 && Marshal.GetLastWin32Error() == (int)Errno.EINTR);
             if (ret >= 0)
                 return fd;
-            NativeMethods.close(fd);
+            LibC.close(fd);
             return -1;
         }
     }

@@ -31,7 +31,7 @@ namespace Avalonia.FreeDesktop
             Poll(0);
         }
 
-        private static string GetSymlinkTarget(string x) => Path.GetFullPath(Path.Combine(DevByLabelDir, NativeMethods.ReadLink(x)));
+        private static string GetSymlinkTarget(string x) => Path.GetFullPath(Path.Combine(DevByLabelDir, LibC.ReadLink(x)));
 
         private static string UnescapeString(string input, string regexText, int escapeBase) =>
             new Regex(regexText).Replace(input, m => Convert.ToChar(Convert.ToByte(m.Groups[1].Value, escapeBase)).ToString());

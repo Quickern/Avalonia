@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using static Avalonia.FreeDesktop.NativeMethods;
+using static Avalonia.FreeDesktop.LibC;
 using static Avalonia.LinuxFramebuffer.Output.LibDrm;
 
 namespace Avalonia.LinuxFramebuffer.Output

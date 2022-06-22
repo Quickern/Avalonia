@@ -62,7 +62,7 @@ namespace Avalonia.LinuxFramebuffer.Input.LibInput
                 }
 
                 pollfd pfd = new pollfd {fd = fd, events = 1};
-                NativeMethods.poll(&pfd, new IntPtr(1), 10);
+                LibC.poll(&pfd, new IntPtr(1), 10);
             }
         }
 

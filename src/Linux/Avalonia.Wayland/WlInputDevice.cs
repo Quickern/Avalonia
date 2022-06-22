@@ -169,16 +169,16 @@ namespace Avalonia.Wayland
 
         public void OnKeymap(WlKeyboard eventSender, WlKeyboard.KeymapFormatEnum format, int fd, uint size)
         {
-            var map = NativeMethods.mmap(IntPtr.Zero, new IntPtr(size), NativeMethods.PROT_READ, NativeMethods.MAP_PRIVATE, fd, IntPtr.Zero);
+            var map = LibC.mmap(IntPtr.Zero, new IntPtr(size), MemoryProtection.PROT_READ, SharingType.MAP_PRIVATE, fd, IntPtr.Zero);
             if (map == new IntPtr(-1))
             {
-                NativeMethods.close(fd);
+                LibC.close(fd);
                 return;
             }
 
             var keymap = LibXkbCommon.xkb_keymap_new_from_string(_xkbContext, map, (uint)format, 0);
-            NativeMethods.munmap(map, new IntPtr(fd));
-            NativeMethods.close(fd);
+            LibC.munmap(map, new IntPtr(fd));
+            LibC.close(fd);
 
             if (keymap == IntPtr.Zero)
                 return;
