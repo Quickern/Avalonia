@@ -26,7 +26,7 @@ namespace Avalonia.Wayland
 
         private bool _active;
         private WindowState _prevWindowState;
-        private WlOutput _wlOutput;
+        private WlOutput? _wlOutput;
 
         public WlWindow(AvaloniaWaylandPlatform platform, IWindowImpl? popupParent)
         {
@@ -38,7 +38,6 @@ namespace Avalonia.Wayland
             _xdgToplevel = _xdgSurface.GetToplevel();
             _xdgToplevel.Events = this;
             _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
-            WlInputDevice = new WlInputDevice(platform, this);
 
             if (popupParent is null)
                 platform.XdgWmBase.Events = this;
@@ -62,10 +61,8 @@ namespace Avalonia.Wayland
                 surfaces.Add(new EglGlPlatformSurface(egl, new SurfaceInfo(this)));
             }
 
-            Surfaces = surfaces;
+            Surfaces = surfaces.ToArray();
         }
-
-        internal WlInputDevice WlInputDevice { get; }
 
         public Size ClientSize { get; private set; }
 
@@ -93,7 +90,7 @@ namespace Avalonia.Wayland
 
         public IEnumerable<object> Surfaces { get; }
 
-        public IMouseDevice? MouseDevice => WlInputDevice.MouseDevice;
+        public IMouseDevice? MouseDevice => _platform.WlInputDevice.MouseDevice;
 
         public Action<RawInputEventArgs>? Input { get; set; }
 
@@ -124,6 +121,8 @@ namespace Avalonia.Wayland
         public Action<bool> ExtendClientAreaToDecorationsChanged { get; set; }
 
         public IPlatformHandle Handle { get; }
+
+        internal IInputRoot? InputRoot { get; private set; }
 
         public Size MaxAutoSizeHint
         {
@@ -177,13 +176,13 @@ namespace Avalonia.Wayland
 
         public void Invalidate(Rect rect) => _wlSurface.Damage((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
 
-        public void SetInputRoot(IInputRoot inputRoot) => WlInputDevice.InputRoot = inputRoot;
+        public void SetInputRoot(IInputRoot inputRoot) => InputRoot = inputRoot;
 
         public Point PointToClient(PixelPoint point) => new(point.X, point.Y);
 
         public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
-        public void SetCursor(ICursorImpl? cursor) => WlInputDevice.SetCursor(cursor as WlCursor);
+        public void SetCursor(ICursorImpl? cursor) => _platform.WlInputDevice.SetCursor(cursor as WlCursor);
 
         public IPopupImpl? CreatePopup() => null; // TODO
 
@@ -243,9 +242,9 @@ namespace Avalonia.Wayland
 
         public void CanResize(bool value) { }
 
-        public void BeginMoveDrag(PointerPressedEventArgs e) => _xdgToplevel.Move(_platform.WlSeat, WlInputDevice.Serial);
+        public void BeginMoveDrag(PointerPressedEventArgs e) => _xdgToplevel.Move(_platform.WlSeat, _platform.WlInputDevice.Serial);
 
-        public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e) => _xdgToplevel.Resize(_platform.WlSeat, WlInputDevice.Serial, _windowEdges[edge]);
+        public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e) => _xdgToplevel.Resize(_platform.WlSeat, _platform.WlInputDevice.Serial, _windowEdges[edge]);
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
@@ -253,7 +252,7 @@ namespace Avalonia.Wayland
                 return;
             ClientSize = clientSize;
             if (_eglWindow != IntPtr.Zero)
-                LibWaylandEgl.wl_egl_window_resize(Handle.Handle, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
+                LibWaylandEgl.wl_egl_window_resize(_eglWindow, (int)ClientSize.Width, (int)ClientSize.Height, 0, 0);
             Resized?.Invoke(ClientSize, reason);
             Redraw();
         }

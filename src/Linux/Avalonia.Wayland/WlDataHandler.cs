@@ -32,7 +32,7 @@ namespace Avalonia.Wayland
             _wlDataDevice.Events = _wlDataDeviceHandler;
         }
 
-        private class WlDataDeviceHandler : IDisposable, WlDataDevice.IEvents
+        private sealed class WlDataDeviceHandler : IDisposable, WlDataDevice.IEvents
         {
             private readonly AvaloniaWaylandPlatform _platform;
 
@@ -53,12 +53,12 @@ namespace Avalonia.Wayland
 
             public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, int x, int y, WlDataOffer id)
             {
-                if (_platform.WlScreens.ActiveWindow is null || CurrentOffer is null)
+                if (CurrentOffer is null || _platform.WlScreens.ActiveWindow?.InputRoot is null)
                     return;
                 _position = new Point(x, y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-                var inputRoot = _platform.WlScreens.ActiveWindow.WlInputDevice.InputRoot;
-                var modifiers = _platform.WlScreens.ActiveWindow.WlInputDevice.RawInputModifiers;
+                var inputRoot = _platform.WlScreens.ActiveWindow.InputRoot;
+                var modifiers = _platform.WlInputDevice.RawInputModifiers;
                 var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
                 _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
                 CurrentOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)args.Effects);
@@ -71,26 +71,26 @@ namespace Avalonia.Wayland
 
             public void OnMotion(WlDataDevice eventSender, uint time, int x, int y)
             {
-                if (_platform.WlScreens.ActiveWindow is null || CurrentOffer is null)
+                var window = _platform.WlScreens.ActiveWindow;
+                if (window?.InputRoot is null || CurrentOffer is null)
                     return;
                 _position = new Point(x, y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-                var inputRoot = _platform.WlScreens.ActiveWindow.WlInputDevice.InputRoot;
-                var modifiers = _platform.WlScreens.ActiveWindow.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
-                _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+                var modifiers = _platform.WlInputDevice.RawInputModifiers;
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, window.InputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                window.Input?.Invoke(args);
                 CurrentOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)args.Effects);
             }
 
             public void OnDrop(WlDataDevice eventSender)
             {
-                if (_platform.WlScreens.ActiveWindow is null || CurrentOffer is null)
+                var window = _platform.WlScreens.ActiveWindow;
+                if (window?.InputRoot is null || CurrentOffer is null)
                     return;
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-                var inputRoot = _platform.WlScreens.ActiveWindow.WlInputDevice.InputRoot;
-                var modifiers = _platform.WlScreens.ActiveWindow.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
-                _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+                var modifiers = _platform.WlInputDevice.RawInputModifiers;
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, window.InputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                window.Input?.Invoke(args);
             }
 
             public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
@@ -166,10 +166,7 @@ namespace Avalonia.Wayland
 
         public Task ClearAsync()
         {
-            var window = _platform.WlScreens.ActiveWindow;
-            if (window is null)
-                return Task.CompletedTask;
-            _wlDataDevice.SetSelection(null, window.WlInputDevice.KeyboardEnterSerial);
+            _wlDataDevice.SetSelection(null, _platform.WlInputDevice.KeyboardEnterSerial);
             return Task.CompletedTask;
         }
 
@@ -214,43 +211,31 @@ namespace Avalonia.Wayland
 
         private void SetText(string text)
         {
-            var window = _platform.WlScreens.ActiveWindow;
-            if (window is null)
-                return;
-
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
             _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Text = text };
             dataSource.Events = _currentDataSourceHandler;
             dataSource.Offer(PlainText);
             dataSource.Offer(PlainTextUtf8);
-            _wlDataDevice.SetSelection(dataSource, window.WlInputDevice.KeyboardEnterSerial);
+            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
         }
 
         private void SetUris(IEnumerable<string> uris)
         {
-            var window = _platform.WlScreens.ActiveWindow;
-            if (window is null)
-                return;
-
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
             _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Uris = uris };
             dataSource.Events = _currentDataSourceHandler;
             dataSource.Offer(UriList);
-            _wlDataDevice.SetSelection(dataSource, window.WlInputDevice.KeyboardEnterSerial);
+            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
         }
 
         private void SetDataObject(IDataObject dataObject)
         {
-            var window = _platform.WlScreens.ActiveWindow;
-            if (window is null)
-                return;
-
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
             _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { DataObject = dataObject };
             dataSource.Events = _currentDataSourceHandler;
             foreach (var format in dataObject.GetDataFormats())
                 dataSource.Offer(format);
-            _wlDataDevice.SetSelection(dataSource, window.WlInputDevice.KeyboardEnterSerial);
+            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
         }
 
         private sealed class WlDataObject : IDataObject, IDisposable, WlDataOffer.IEvents

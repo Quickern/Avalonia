@@ -45,6 +45,9 @@ namespace Avalonia.Wayland
             GlobalRemoved?.Invoke(glob);
         }
 
+        public T BindRequiredInterface<T>(IBindFactory<T> factory, string @interface, int version) where T : WlProxy =>
+            Bind(factory, @interface, version) ?? throw new NWaylandException($"Failed to bind required interface {@interface}");
+
         public T? Bind<T>(IBindFactory<T> factory, string @interface, int version) where T : WlProxy
         {
             var global = _globals.Values.FirstOrDefault(g => g.Interface == @interface);

@@ -15,7 +15,6 @@ namespace Avalonia.Wayland
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly IPlatformThreadingInterface _platformThreading;
         private readonly ICursorFactory _cursorFactory;
-        private readonly ITopLevelImpl _topLevelImpl;
         private readonly WlSurface _pointerSurface;
 
         private WlPointer? _wlPointer;
@@ -46,12 +45,11 @@ namespace Avalonia.Wayland
         private int _shiftMask;
         private int _metaMask;
 
-        public WlInputDevice(AvaloniaWaylandPlatform platform, ITopLevelImpl topLevel)
+        public WlInputDevice(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             _platformThreading = AvaloniaLocator.Current.GetRequiredService<IPlatformThreadingInterface>();
             _cursorFactory = AvaloniaLocator.Current.GetRequiredService<ICursorFactory>();
-            _topLevelImpl = topLevel;
             _platform.WlSeat.Events = this;
             _pointerSurface = platform.WlCompositor.CreateSurface();
         }
@@ -61,8 +59,6 @@ namespace Avalonia.Wayland
         public IKeyboardDevice? KeyboardDevice { get; private set; }
 
         public TouchDevice? TouchDevice { get; private set; }
-
-        public IInputRoot InputRoot { get; set; }
 
         public RawInputModifiers RawInputModifiers { get; private set; }
 
@@ -124,20 +120,28 @@ namespace Avalonia.Wayland
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
+            if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+                return;
             PointerSurfaceSerial = serial;
-            var args = new RawPointerEventArgs(MouseDevice!, 0, InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers);
-            _topLevelImpl.Input?.Invoke(args);
+            var args = new RawPointerEventArgs(MouseDevice!, 0, _platform.WlScreens.ActiveWindow.InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers);
+            _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
         }
 
         public void OnMotion(WlPointer eventSender, uint time, int surfaceX, int surfaceY)
         {
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.InputRoot is null)
+                return;
             _pointerPosition = new Point(LibWayland.WlFixedToInt(surfaceX), LibWayland.WlFixedToInt(surfaceY));
-            var args = new RawPointerEventArgs(MouseDevice!, time, InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers);
-            _topLevelImpl.Input?.Invoke(args);
+            var args = new RawPointerEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers);
+            window.Input?.Invoke(args);
         }
 
         public void OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
         {
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.InputRoot is null)
+                return;
             Serial = serial;
             var type = button switch
             {
@@ -146,17 +150,19 @@ namespace Avalonia.Wayland
                 (uint)EvKey.BTN_MIDDLE => state == WlPointer.ButtonStateEnum.Pressed ? RawPointerEventType.MiddleButtonDown : RawPointerEventType.MiddleButtonUp
             };
 
-            var args = new RawPointerEventArgs(MouseDevice!, time, InputRoot, type, _pointerPosition, RawInputModifiers);
-            _topLevelImpl.Input?.Invoke(args);
+            var args = new RawPointerEventArgs(MouseDevice!, time, window.InputRoot, type, _pointerPosition, RawInputModifiers);
+            window.Input?.Invoke(args);
         }
 
         public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, int value)
         {
-            const double scrollFactor = 1.0 / 10.0;
+            if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+                return;
+            const double scrollFactor = 0.1;
             var scrollValue = -LibWayland.WlFixedToDouble(value) * scrollFactor;
             var delta = axis == WlPointer.AxisEnum.HorizontalScroll ? new Vector(scrollValue, 0) : new Vector(0, scrollValue);
-            var args = new RawMouseWheelEventArgs(MouseDevice!, time, InputRoot, _pointerPosition, delta, RawInputModifiers);
-            _topLevelImpl.Input?.Invoke(args);
+            var args = new RawMouseWheelEventArgs(MouseDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, _pointerPosition, delta, RawInputModifiers);
+            _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
         }
 
         public void OnFrame(WlPointer eventSender) { }
@@ -229,21 +235,23 @@ namespace Avalonia.Wayland
 
         public void OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
         {
+            if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+                return;
             Serial = serial;
             var code = key + 8;
             var sym = LibXkbCommon.xkb_state_key_get_one_sym(_xkbState, code);
             var avaloniaKey = XkbKeyTransform.ConvertKey(sym);
             var eventType = state == WlKeyboard.KeyStateEnum.Pressed ? RawKeyEventType.KeyDown : RawKeyEventType.KeyUp;
-            var keyEventArgs = new RawKeyEventArgs(KeyboardDevice!, time, InputRoot, eventType, avaloniaKey, RawInputModifiers);
-            _topLevelImpl.Input?.Invoke(keyEventArgs);
+            var keyEventArgs = new RawKeyEventArgs(KeyboardDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, eventType, avaloniaKey, RawInputModifiers);
+            _platform.WlScreens.ActiveWindow.Input?.Invoke(keyEventArgs);
 
             if (state == WlKeyboard.KeyStateEnum.Pressed)
             {
                 var text = GetComposedString(sym, code);
                 if (text is not null)
                 {
-                    var textEventArgs = new RawTextInputEventArgs(KeyboardDevice!, time, InputRoot, text);
-                    _topLevelImpl.Input?.Invoke(textEventArgs);
+                    var textEventArgs = new RawTextInputEventArgs(KeyboardDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, text);
+                    _platform.WlScreens.ActiveWindow.Input?.Invoke(textEventArgs);
                 }
 
                 if (LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code) && _repeatInterval > TimeSpan.Zero)
@@ -334,10 +342,13 @@ namespace Avalonia.Wayland
 
         private void OnRepeatKey()
         {
-            _topLevelImpl.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, InputRoot, RawKeyEventType.KeyDown, _repeatKey, RawInputModifiers));
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.InputRoot is null)
+                return;
+            window.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, window.InputRoot, RawKeyEventType.KeyDown, _repeatKey, RawInputModifiers));
             var text = GetComposedString(_repeatSym, _repeatCode);
             if (text is not null)
-                _topLevelImpl.Input?.Invoke( new RawTextInputEventArgs(KeyboardDevice!, _repeatTime, InputRoot, text));
+                window.Input?.Invoke( new RawTextInputEventArgs(KeyboardDevice!, _repeatTime, window.InputRoot, text));
             if (!_firstRepeat)
                 return;
             _firstRepeat = false;
