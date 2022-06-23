@@ -50,7 +50,7 @@ namespace Avalonia.Wayland
                     break;
                 }
 
-                var timeout = nextTick == new TimeSpan(-1) ? -1 : Math.Max(-1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
+                var timeout = nextTick == TimeSpan.MinValue ? -1 : Math.Max(-1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
                 var ret = LibC.poll(&pollFd, new IntPtr(1), timeout);
 
                 if (cancellationToken.IsCancellationRequested || ret < 0)
@@ -96,10 +96,10 @@ namespace Avalonia.Wayland
         {
             _readyTimers.Clear();
             var now = _clock.Elapsed;
-            TimeSpan nextTick = new(-1);
+            var nextTick = TimeSpan.MinValue;
             foreach (var timer in _timers)
             {
-                if (nextTick == new TimeSpan(-1) || timer.NextTick < nextTick)
+                if (nextTick == TimeSpan.MinValue || timer.NextTick < nextTick)
                     nextTick = timer.NextTick;
                 if (timer.NextTick < now)
                     _readyTimers.Add(timer);
@@ -115,7 +115,7 @@ namespace Avalonia.Wayland
                 if (t.Disposed)
                     continue;
                 t.Reschedule();
-                if (nextTick == new TimeSpan(-1) || t.NextTick < nextTick)
+                if (nextTick == TimeSpan.MinValue || t.NextTick < nextTick)
                     nextTick = t.NextTick;
             }
 

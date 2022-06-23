@@ -177,7 +177,7 @@ namespace Avalonia.Wayland
             }
 
             var keymap = LibXkbCommon.xkb_keymap_new_from_string(_xkbContext, map, (uint)format, 0);
-            LibC.munmap(map, new IntPtr(fd));
+            LibC.munmap(map, new IntPtr(size));
             LibC.close(fd);
 
             if (keymap == IntPtr.Zero)
