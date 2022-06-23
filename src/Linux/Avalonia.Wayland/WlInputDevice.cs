@@ -75,15 +75,11 @@ namespace Avalonia.Wayland
             if (_wlPointer is null || wlCursor is null || wlCursor.ImageCount <= 0)
                 return;
             _currentCursor = wlCursor;
+            _currentCursorImageIndex = -1;
             if (wlCursor.ImageCount == 1)
-            {
                 SetCursorImage(wlCursor[0]);
-            }
             else
-            {
-                _currentCursorImageIndex = -1;
                 _pointerTimer = _platformThreading.StartTimer(DispatcherPriority.Render, wlCursor[0].Delay, OnCursorAnimation);
-            }
         }
 
         public void OnCapabilities(WlSeat eventSender, WlSeat.CapabilityEnum capabilities)
@@ -113,6 +109,7 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
         {
+            _platform.WlScreens.OnEnterSurface(surface);
             PointerSurfaceSerial = serial;
             _pointerPosition = new Point(LibWayland.WlFixedToInt(surfaceX), LibWayland.WlFixedToInt(surfaceY));
             SetCursor(null);
@@ -224,6 +221,7 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
         {
+            _platform.WlScreens.OnEnterSurface(surface);
             Serial = serial;
             KeyboardEnterSerial = serial;
         }

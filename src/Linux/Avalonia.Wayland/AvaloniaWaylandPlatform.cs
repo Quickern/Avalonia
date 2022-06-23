@@ -27,6 +27,7 @@ namespace Avalonia.Wayland
             var registry = WlDisplay.GetRegistry();
             WlRegistryHandler = new WlRegistryHandler(registry);
             WlDisplay.Roundtrip();
+
             WlCompositor = WlRegistryHandler.BindRequiredInterface(WlCompositor.BindFactory, WlCompositor.InterfaceName, WlCompositor.InterfaceVersion);
             WlSeat = WlRegistryHandler.BindRequiredInterface(WlSeat.BindFactory, WlSeat.InterfaceName, WlSeat.InterfaceVersion);
             WlShm = WlRegistryHandler.BindRequiredInterface(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
@@ -52,6 +53,7 @@ namespace Avalonia.Wayland
 
             WlScreens = new WlScreens(this);
             WlInputDevice = new WlInputDevice(this);
+            WlDisplay.Roundtrip();
 
             if (options.UseGpu)
             {

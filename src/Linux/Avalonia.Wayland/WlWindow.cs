@@ -39,12 +39,13 @@ namespace Avalonia.Wayland
             _xdgToplevel.Events = this;
             _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
 
+            platform.WlScreens.WlWindows.Add(_wlSurface, this);
+
             if (popupParent is null)
                 platform.XdgWmBase.Events = this;
             else
                 SetParent(popupParent);
 
-            platform.WlDisplay.Roundtrip();
             var screens = _platform.WlScreens.AllScreens;
             ClientSize = screens.Count > 0
                 ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
@@ -63,6 +64,10 @@ namespace Avalonia.Wayland
 
             Surfaces = surfaces.ToArray();
         }
+
+        public IPlatformHandle Handle { get; }
+
+        public Size MaxAutoSizeHint => _wlOutput is null ? Size.Empty : _platform.WlScreens.ScreenFromOutput(_wlOutput).Bounds.Size.ToSize(RenderScaling);
 
         public Size ClientSize { get; private set; }
 
@@ -120,19 +125,6 @@ namespace Avalonia.Wayland
 
         public Action<bool> ExtendClientAreaToDecorationsChanged { get; set; }
 
-        public IPlatformHandle Handle { get; }
-
-        internal IInputRoot? InputRoot { get; private set; }
-
-        public Size MaxAutoSizeHint
-        {
-            get
-            {
-                var screen = _platform.WlScreens.ScreenFromWindow(this);
-                return screen is null ? Size.Empty : screen.Bounds.Size.ToSize(RenderScaling);
-            }
-        }
-
         private WindowState _windowState;
         public WindowState WindowState
         {
@@ -160,6 +152,8 @@ namespace Avalonia.Wayland
                 }
             }
         }
+
+        internal IInputRoot? InputRoot { get; private set; }
 
         public IRenderer CreateRenderer(IRenderRoot root)
         {
@@ -332,6 +326,7 @@ namespace Avalonia.Wayland
         {
             if (Closing.Invoke())
                 return;
+            _platform.WlScreens.WlWindows.Remove(_wlSurface);
             Closed?.Invoke();
         }
 
@@ -344,7 +339,6 @@ namespace Avalonia.Wayland
         public void OnEnter(WlSurface eventSender, WlOutput output)
         {
             _wlOutput = output;
-            _platform.WlScreens.ActiveWindow = this;
             var screen = _platform.WlScreens.ScreenFromOutput(output);
             if (MathUtilities.AreClose(screen.PixelDensity, RenderScaling))
                 return;

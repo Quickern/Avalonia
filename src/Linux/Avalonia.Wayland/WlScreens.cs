@@ -12,18 +12,20 @@ namespace Avalonia.Wayland
         private readonly Dictionary<uint, WlScreen> _wlScreens = new();
         private readonly Dictionary<WlOutput, WlScreen> _wlOutputs = new();
 
-        public WlWindow? ActiveWindow { get; set; }
-
-        public int ScreenCount => _wlScreens.Count;
-
-        public IReadOnlyList<Screen> AllScreens => _wlScreens.Values.Select(ScreenForWlScreen).ToList();
-
         public WlScreens(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             platform.WlRegistryHandler.GlobalAdded += OnGlobalAdded;
             _platform.WlRegistryHandler.GlobalRemoved += OnGlobalRemoved;
         }
+
+        public int ScreenCount => _wlScreens.Count;
+
+        public IReadOnlyList<Screen> AllScreens => _wlScreens.Values.Select(ScreenForWlScreen).ToList();
+
+        public Dictionary<WlSurface, WlWindow> WlWindows { get; } = new();
+
+        public WlWindow? ActiveWindow { get; private set; }
 
         public Screen? ScreenFromWindow(IWindowBaseImpl window) => ScreenHelper.ScreenFromWindow(window, AllScreens);
 
@@ -33,7 +35,11 @@ namespace Avalonia.Wayland
 
         public Screen ScreenFromOutput(WlOutput wlOutput) => ScreenForWlScreen(_wlOutputs[wlOutput]);
 
-        private static Screen ScreenForWlScreen(WlScreen wlScreen) => new(wlScreen.PixelDensity, wlScreen.Bounds, wlScreen.WorkingArea, true);
+        public void OnEnterSurface(WlSurface wlSurface)
+        {
+            if (WlWindows.TryGetValue(wlSurface, out var window))
+                _platform.WlScreens.ActiveWindow = window;
+        }
 
         public void Dispose()
         {
@@ -47,7 +53,7 @@ namespace Avalonia.Wayland
         {
             if (globalInfo.Interface != WlOutput.InterfaceName)
                 return;
-            var wlOutput = _platform.WlRegistryHandler.Bind(WlOutput.BindFactory, WlOutput.InterfaceVersion, globalInfo);
+            var wlOutput = _platform.WlRegistryHandler.BindRequiredInterface(WlOutput.BindFactory, WlOutput.InterfaceVersion, globalInfo);
             var wlScreen = new WlScreen(wlOutput);
             _wlScreens.Add(globalInfo.Name, wlScreen);
             _wlOutputs.Add(wlOutput, wlScreen);
@@ -63,6 +69,8 @@ namespace Avalonia.Wayland
             _wlOutputs.Remove(wlScreen.WlOutput);
             wlScreen.Dispose();
         }
+
+        private static Screen ScreenForWlScreen(WlScreen wlScreen) => new(wlScreen.PixelDensity, wlScreen.Bounds, wlScreen.WorkingArea, true);
 
         private sealed class WlScreen : WlOutput.IEvents, IDisposable
         {
