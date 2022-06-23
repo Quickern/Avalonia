@@ -20,50 +20,24 @@ namespace Avalonia.Wayland
 {
     internal class AvaloniaWaylandPlatform : IWindowingPlatform
     {
-        internal WaylandPlatformOptions Options { get; private set; }
-
-        internal WlDisplay WlDisplay { get; private set; }
-
-        internal WlRegistryHandler WlRegistryHandler { get; private set; }
-
-        internal WlCompositor WlCompositor { get; private set; }
-
-        internal WlSeat WlSeat { get; private set; }
-
-        internal WlShm WlShm { get; private set; }
-
-        internal WlDataDeviceManager WlDataDeviceManager { get; private set; }
-
-        internal XdgWmBase XdgWmBase { get; private set; }
-
-        internal XdgActivationV1 XdgActivation { get; private set; }
-
-        internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; private set; }
-
-        internal ZxdgExporterV2 ZxdgExporter { get; private set; }
-
-        internal WlScreens WlScreens { get; private set; }
-
-        public void Initialize(WaylandPlatformOptions options)
+        public AvaloniaWaylandPlatform(WaylandPlatformOptions options)
         {
             Options = options;
             WlDisplay = WlDisplay.Connect();
             var registry = WlDisplay.GetRegistry();
             WlRegistryHandler = new WlRegistryHandler(registry);
             WlDisplay.Roundtrip();
-            WlCompositor = WlRegistryHandler.Bind(WlCompositor.BindFactory, WlCompositor.InterfaceName, WlCompositor.InterfaceVersion);
-            WlSeat = WlRegistryHandler.Bind(WlSeat.BindFactory, WlSeat.InterfaceName, WlSeat.InterfaceVersion);
-            WlShm = WlRegistryHandler.Bind(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
-            WlDataDeviceManager = WlRegistryHandler.Bind(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
-            XdgWmBase = WlRegistryHandler.Bind(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
-            XdgActivation = WlRegistryHandler.Bind(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
-            ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
-            ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
-            WlScreens = new WlScreens(this);
+            WlCompositor = WlRegistryHandler.BindRequiredInterface(WlCompositor.BindFactory, WlCompositor.InterfaceName, WlCompositor.InterfaceVersion);
+            WlSeat = WlRegistryHandler.BindRequiredInterface(WlSeat.BindFactory, WlSeat.InterfaceName, WlSeat.InterfaceVersion);
+            WlShm = WlRegistryHandler.BindRequiredInterface(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
+            WlDataDeviceManager = WlRegistryHandler.BindRequiredInterface(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
+            XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
+            XdgActivation = WlRegistryHandler.BindRequiredInterface(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
+            ZxdgDecorationManager = WlRegistryHandler.BindRequiredInterface(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
+            ZxdgExporter = WlRegistryHandler.BindRequiredInterface(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
 
             var wlDataHandler = new WlDataHandler(this);
-            AvaloniaLocator.CurrentMutable.BindToSelf(this)
-                .Bind<IWindowingPlatform>().ToConstant(this)
+            AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
                 .Bind<IPlatformThreadingInterface>().ToConstant(new WlPlatformThreading(this))
                 .Bind<IRenderTimer>().ToConstant(new DefaultRenderTimer(60))
                 .Bind<IRenderLoop>().ToConstant(new RenderLoop())
@@ -75,7 +49,9 @@ namespace Avalonia.Wayland
                 .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
                 .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
-                //.Bind<IPlatformLifetimeEventsImpl>().ToConstant();
+
+            WlScreens = new WlScreens(this);
+            WlInputDevice = new WlInputDevice(this);
 
             if (options.UseGpu)
             {
@@ -84,6 +60,32 @@ namespace Avalonia.Wayland
                     AvaloniaLocator.CurrentMutable.Bind<IPlatformOpenGlInterface>().ToConstant(egl);
             }
         }
+
+        internal WaylandPlatformOptions Options { get; }
+
+        internal WlDisplay WlDisplay { get; }
+
+        internal WlRegistryHandler WlRegistryHandler { get; }
+
+        internal WlCompositor WlCompositor { get; }
+
+        internal WlSeat WlSeat { get; }
+
+        internal WlShm WlShm { get; }
+
+        internal WlDataDeviceManager WlDataDeviceManager { get; }
+
+        internal XdgWmBase XdgWmBase { get; }
+
+        internal XdgActivationV1 XdgActivation { get; }
+
+        internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; }
+
+        internal ZxdgExporterV2 ZxdgExporter { get; }
+
+        internal WlScreens WlScreens { get; }
+
+        internal WlInputDevice WlInputDevice { get; }
 
         public IWindowImpl CreateWindow() => new WlWindow(this, null);
 
@@ -117,8 +119,12 @@ namespace Avalonia
     public static class AvaloniaWaylandPlatformExtensions
     {
         public static T UseWayland<T>(this T builder) where T : AppBuilderBase<T>, new() =>
-            builder.UseWindowingSubsystem(static () => new AvaloniaWaylandPlatform().Initialize(
-                AvaloniaLocator.Current.GetService<WaylandPlatformOptions>() ?? new WaylandPlatformOptions()));
+            builder.UseWindowingSubsystem(static () =>
+            {
+                var options = AvaloniaLocator.Current.GetService<WaylandPlatformOptions>() ?? new WaylandPlatformOptions();
+                var platform = new AvaloniaWaylandPlatform(options);
+                AvaloniaLocator.CurrentMutable.BindToSelf(platform);
+            });
     }
 
     public class WaylandPlatformOptions
