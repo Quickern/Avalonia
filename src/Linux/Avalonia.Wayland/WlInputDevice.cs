@@ -107,11 +107,11 @@ namespace Avalonia.Wayland
 
         public void OnName(WlSeat eventSender, string name) { }
 
-        public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, int surfaceX, int surfaceY)
+        public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, WlFixed surfaceX, WlFixed surfaceY)
         {
             _platform.WlScreens.OnEnterSurface(surface);
             PointerSurfaceSerial = serial;
-            _pointerPosition = new Point(LibWayland.WlFixedToInt(surfaceX), LibWayland.WlFixedToInt(surfaceY));
+            _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
             SetCursor(null);
         }
 
@@ -124,12 +124,12 @@ namespace Avalonia.Wayland
             _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
         }
 
-        public void OnMotion(WlPointer eventSender, uint time, int surfaceX, int surfaceY)
+        public void OnMotion(WlPointer eventSender, uint time, WlFixed surfaceX, WlFixed surfaceY)
         {
             var window = _platform.WlScreens.ActiveWindow;
             if (window?.InputRoot is null)
                 return;
-            _pointerPosition = new Point(LibWayland.WlFixedToInt(surfaceX), LibWayland.WlFixedToInt(surfaceY));
+            _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
             var args = new RawPointerEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers);
             window.Input?.Invoke(args);
         }
@@ -151,12 +151,12 @@ namespace Avalonia.Wayland
             window.Input?.Invoke(args);
         }
 
-        public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, int value)
+        public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, WlFixed value)
         {
             if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
                 return;
             const double scrollFactor = 0.1;
-            var scrollValue = -LibWayland.WlFixedToDouble(value) * scrollFactor;
+            var scrollValue = -(double)value * scrollFactor;
             var delta = axis == WlPointer.AxisEnum.HorizontalScroll ? new Vector(scrollValue, 0) : new Vector(0, scrollValue);
             var args = new RawMouseWheelEventArgs(MouseDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, _pointerPosition, delta, RawInputModifiers);
             _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
@@ -169,6 +169,8 @@ namespace Avalonia.Wayland
         public void OnAxisStop(WlPointer eventSender, uint time, WlPointer.AxisEnum axis) { }
 
         public void OnAxisDiscrete(WlPointer eventSender, WlPointer.AxisEnum axis, int discrete) { }
+
+        public void OnAxisValue120(WlPointer eventSender, WlPointer.AxisEnum axis, int value120) { }
 
         public void OnKeymap(WlKeyboard eventSender, WlKeyboard.KeymapFormatEnum format, int fd, uint size)
         {
@@ -291,7 +293,7 @@ namespace Avalonia.Wayland
             _repeatInterval = TimeSpan.FromSeconds(1f / rate);
         }
 
-        public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, int x, int y)
+        public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, WlFixed x, WlFixed y)
         {
             Serial = serial;
         }
@@ -301,30 +303,15 @@ namespace Avalonia.Wayland
             Serial = serial;
         }
 
-        public void OnMotion(WlTouch eventSender, uint time, int id, int x, int y)
-        {
+        public void OnMotion(WlTouch eventSender, uint time, int id, WlFixed x, WlFixed y) { }
 
-        }
+        public void OnFrame(WlTouch eventSender) { }
 
-        public void OnFrame(WlTouch eventSender)
-        {
+        public void OnCancel(WlTouch eventSender) { }
 
-        }
+        public void OnShape(WlTouch eventSender, int id, WlFixed major, WlFixed minor) { }
 
-        public void OnCancel(WlTouch eventSender)
-        {
-
-        }
-
-        public void OnShape(WlTouch eventSender, int id, int major, int minor)
-        {
-
-        }
-
-        public void OnOrientation(WlTouch eventSender, int id, int orientation)
-        {
-
-        }
+        public void OnOrientation(WlTouch eventSender, int id, WlFixed orientation) { }
 
         public void Dispose()
         {

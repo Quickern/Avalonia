@@ -8,6 +8,7 @@ using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
+using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
@@ -51,11 +52,11 @@ namespace Avalonia.Wayland
                 CurrentOffer = new WlDataObject(id);
             }
 
-            public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, int x, int y, WlDataOffer id)
+            public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, WlFixed x, WlFixed y, WlDataOffer id)
             {
                 if (CurrentOffer is null || _platform.WlScreens.ActiveWindow?.InputRoot is null)
                     return;
-                _position = new Point(x, y);
+                _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var inputRoot = _platform.WlScreens.ActiveWindow.InputRoot;
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
@@ -69,12 +70,12 @@ namespace Avalonia.Wayland
                 throw new NotImplementedException();
             }
 
-            public void OnMotion(WlDataDevice eventSender, uint time, int x, int y)
+            public void OnMotion(WlDataDevice eventSender, uint time, WlFixed x, WlFixed y)
             {
                 var window = _platform.WlScreens.ActiveWindow;
                 if (window?.InputRoot is null || CurrentOffer is null)
                     return;
-                _position = new Point(x, y);
+                _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
                 var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, window.InputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
