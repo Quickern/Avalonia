@@ -5,20 +5,12 @@ using Xunit;
 
 namespace Avalonia.IntegrationTests.Appium
 {
-    [Flags]
-    internal enum TestPlatforms
+    internal class PlatformTheoryAttribute : TheoryAttribute
     {
-        Windows = 0x01,
-        MacOS = 0x02,
-        All = Windows | MacOS,
-    }
-    
-    internal class PlatformFactAttribute : FactAttribute
-    {
-        public PlatformFactAttribute(TestPlatforms platforms = TestPlatforms.All) => Platforms = platforms;
-        
+        public PlatformTheoryAttribute(TestPlatforms platforms = TestPlatforms.All) => Platforms = platforms;
+
         public TestPlatforms Platforms { get; }
-        
+
         public override string? Skip
         {
             get => IsSupported() ? null : $"Ignored on {RuntimeInformation.OSDescription}";
