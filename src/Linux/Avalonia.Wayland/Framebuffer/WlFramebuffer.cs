@@ -2,15 +2,17 @@ using System;
 using Avalonia.Platform;
 using NWayland.Protocols.Wayland;
 
-namespace Avalonia.Wayland
+namespace Avalonia.Wayland.Framebuffer
 {
     internal class WlFramebuffer : ILockedFramebuffer
     {
+        private readonly WlWindow _wlWindow;
         private readonly WlSurface _wlSurface;
         private readonly WlBuffer _wlBuffer;
 
-        public WlFramebuffer(WlSurface wlSurface, WlBuffer wlBuffer, IntPtr address, PixelSize size, int stride, PixelFormat format)
+        public WlFramebuffer(WlWindow wlWindow, WlSurface wlSurface, WlBuffer wlBuffer, IntPtr address, PixelSize size, int stride, PixelFormat format)
         {
+            _wlWindow = wlWindow;
             _wlSurface = wlSurface;
             _wlBuffer = wlBuffer;
             Address = address;
@@ -22,15 +24,20 @@ namespace Avalonia.Wayland
 
         public void Dispose()
         {
+            _wlWindow.RequestFrame();
             _wlSurface.Attach(_wlBuffer, 0, 0);
             _wlSurface.Damage(0, 0, Size.Width, Size.Height);
             _wlSurface.Commit();
         }
 
         public IntPtr Address { get; }
+
         public PixelSize Size { get; }
+
         public int RowBytes { get; }
+
         public Vector Dpi { get; }
+
         public PixelFormat Format { get; }
     }
 }

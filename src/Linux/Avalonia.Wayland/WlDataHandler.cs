@@ -49,7 +49,7 @@ namespace Avalonia.Wayland
             public void OnDataOffer(WlDataDevice eventSender, WlDataOffer id)
             {
                 CurrentOffer?.Dispose();
-                CurrentOffer = new WlDataObject(id);
+                CurrentOffer = new WlDataObject(_platform, id);
             }
 
             public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, WlFixed x, WlFixed y, WlDataOffer id)
@@ -241,10 +241,12 @@ namespace Avalonia.Wayland
 
         private sealed class WlDataObject : IDataObject, IDisposable, WlDataOffer.IEvents
         {
+            private readonly AvaloniaWaylandPlatform _platform;
             private readonly List<string> _mimeTypes;
 
-            public WlDataObject(WlDataOffer wlDataOffer)
+            public WlDataObject(AvaloniaWaylandPlatform platform, WlDataOffer wlDataOffer)
             {
+                _platform = platform;
                 WlDataOffer = wlDataOffer;
                 WlDataOffer.Events = this;
                 _mimeTypes = new List<string>();
@@ -348,7 +350,7 @@ namespace Avalonia.Wayland
                 }
 
                 WlDataOffer.Receive(mimeType, fds[1]);
-                WlDataOffer.Display.Roundtrip();
+                _platform.WlDisplay.Roundtrip();
                 LibC.close(fds[1]);
                 return fds[0];
             }

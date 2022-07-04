@@ -40,8 +40,12 @@ namespace Avalonia.Wayland
             var wlDataHandler = new WlDataHandler(this);
             AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
                 .Bind<IPlatformThreadingInterface>().ToConstant(new WlPlatformThreading(this))
+                // ---
+                // TODO: Compatibility with animations for now, Clocks should be tied to the control's according ITopLevel
+                // Reason: We use Wayland's FrameCallbacks as a render loop, which are variably send by the compositor.
                 .Bind<IRenderTimer>().ToConstant(new DefaultRenderTimer(60))
                 .Bind<IRenderLoop>().ToConstant(new RenderLoop())
+                // ---
                 .Bind<PlatformHotkeyConfiguration>().ToConstant(new PlatformHotkeyConfiguration(KeyModifiers.Control))
                 .Bind<IKeyboardDevice>().ToConstant(new KeyboardDevice())
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
@@ -57,7 +61,8 @@ namespace Avalonia.Wayland
 
             if (options.UseGpu)
             {
-                var egl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, 0x31D8, WlDisplay.Handle, null));
+                const int EGL_PLATFORM_WAYLAND_KHR = 0x31D8;
+                var egl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
                 if (egl is not null)
                     AvaloniaLocator.CurrentMutable.Bind<IPlatformOpenGlInterface>().ToConstant(egl);
             }

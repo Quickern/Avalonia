@@ -5,13 +5,11 @@ namespace Avalonia.Wayland
 {
     internal unsafe class WlThemeCursor : WlCursor
     {
-        private readonly AvaloniaWaylandPlatform _platform;
         private readonly LibWaylandCursor.wl_cursor* _wlCursor;
         private readonly WlCursorImage?[] _wlCursorImages;
 
-        public WlThemeCursor(LibWaylandCursor.wl_cursor* wlCursor, AvaloniaWaylandPlatform platform) : base(wlCursor->image_count)
+        public WlThemeCursor(LibWaylandCursor.wl_cursor* wlCursor) : base(wlCursor->image_count)
         {
-            _platform = platform;
             _wlCursor = wlCursor;
             _wlCursorImages = new WlCursorImage[ImageCount];
         }
@@ -25,7 +23,7 @@ namespace Avalonia.Wayland
                     return cachedImage;
                 var image = _wlCursor->images[index];
                 var rawBuffer = LibWaylandCursor.wl_cursor_image_get_buffer(image);
-                var wlBuffer = new WlBuffer(rawBuffer, WlBuffer.InterfaceVersion, _platform.WlDisplay);
+                var wlBuffer = new WlBuffer(rawBuffer, WlBuffer.InterfaceVersion);
                 var size = new PixelSize((int)image->width, (int)image->height);
                 var hotspot = new PixelPoint((int)image->hotspot_x, (int)image->hotspot_y);
                 var delay = TimeSpan.FromMilliseconds(image->delay);

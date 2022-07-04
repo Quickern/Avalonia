@@ -29,6 +29,10 @@ namespace Avalonia.Wayland
             _displayFd = platform.WlDisplay.GetFd();
         }
 
+        public event Action<DispatcherPriority?>? Signaled;
+
+        public bool CurrentThreadIsLoopThread => Thread.CurrentThread == _mainThread;
+
         public unsafe void RunLoop(CancellationToken cancellationToken)
         {
             var pollFd = new pollfd
@@ -88,10 +92,6 @@ namespace Avalonia.Wayland
 
         public void Signal(DispatcherPriority priority) { }
 
-        public bool CurrentThreadIsLoopThread => Thread.CurrentThread == _mainThread;
-
-        public event Action<DispatcherPriority?>? Signaled;
-
         private TimeSpan DispatchTimers(CancellationToken cancellationToken)
         {
             _readyTimers.Clear();
@@ -104,8 +104,6 @@ namespace Avalonia.Wayland
                 if (timer.NextTick < now)
                     _readyTimers.Add(timer);
             }
-
-            _readyTimers.Sort();
 
             foreach (var t in _readyTimers)
             {

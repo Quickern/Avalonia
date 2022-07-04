@@ -30,7 +30,7 @@ namespace Avalonia.Wayland
                 var cursor = LibWaylandCursor.wl_cursor_theme_get_cursor(_theme, name);
                 if (cursor is null)
                     continue;
-                wlCursor = new WlThemeCursor(cursor, _platform);
+                wlCursor = new WlThemeCursor(cursor);
                 _wlCursorCache.Add(cursorType, wlCursor);
                 return wlCursor;
             }

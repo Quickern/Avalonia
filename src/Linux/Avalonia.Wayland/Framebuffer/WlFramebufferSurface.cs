@@ -7,7 +7,7 @@ using Avalonia.Platform;
 using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
-namespace Avalonia.Wayland
+namespace Avalonia.Wayland.Framebuffer
 {
     internal class WlFramebufferSurface : IFramebufferPlatformSurface, IDisposable
     {
@@ -37,7 +37,7 @@ namespace Avalonia.Wayland
                 _buffers.Add(buffer);
             }
 
-            return buffer.GetFramebuffer(_wlSurface, width, height, stride);
+            return buffer.GetFramebuffer(_wlWindow, _wlSurface, width, height, stride);
         }
 
         public void Dispose()
@@ -61,7 +61,7 @@ namespace Avalonia.Wayland
 
             public bool Available { get; private set; }
 
-            public WlFramebuffer GetFramebuffer(WlSurface surface, int width, int height, int stride)
+            public WlFramebuffer GetFramebuffer(WlWindow wlWindow, WlSurface wlSurface, int width, int height, int stride)
             {
                 Available = false;
                 var size = stride * height;
@@ -85,7 +85,7 @@ namespace Avalonia.Wayland
                     LibC.close(fd);
                 }
 
-                return new WlFramebuffer(surface, _wlBuffer!, _data, new PixelSize(width, height), stride, PixelFormat.Bgra8888);
+                return new WlFramebuffer(wlWindow, wlSurface, _wlBuffer!, _data, new PixelSize(width, height), stride, PixelFormat.Bgra8888);
             }
 
             public void OnRelease(WlBuffer eventSender)
