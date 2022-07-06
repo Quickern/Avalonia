@@ -214,8 +214,8 @@ namespace Avalonia.X11
                     _x11.Atoms.XA_CARDINAL, 32, PropertyMode.Replace, ref _xSyncCounter, 1);
             }
 
-            var canUseFreeDekstopPicker = !platform.Options.UseGtkFilePicker && platform.Options.UseDBusMenu;
-            StorageProvider = canUseFreeDekstopPicker && DBusSystemDialog.TryCreate(Handle) is {} dBusStorage
+            var canUseFreeDekstopPicker = !platform.Options.UseGtkFilePicker && platform.Options.UseDBusMenu && Handle.HandleDescriptor == "XID";
+            StorageProvider = canUseFreeDekstopPicker && DBusSystemDialog.TryCreate($"x11:{Handle.Handle.ToString("X")}") is { } dBusStorage
                 ? dBusStorage : new NativeDialogs.GtkSystemDialog(this);
         }
 

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Logging;
-using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Platform.Storage.FileIO;
 
@@ -32,19 +31,16 @@ namespace Avalonia.FreeDesktop
             }
         });
 
-        internal static DBusSystemDialog? TryCreate(IPlatformHandle handle)
-        {
-            return handle.HandleDescriptor == "XID" && s_fileChooser.Value is { } fileChooser
-                ? new DBusSystemDialog(fileChooser, handle) : null;
-        }
+        internal static DBusSystemDialog? TryCreate(string parentWindowHandle) =>
+            s_fileChooser.Value is { } fileChooser ? new DBusSystemDialog(fileChooser, parentWindowHandle) : null;
 
         private readonly IFileChooser _fileChooser;
-        private readonly IPlatformHandle _handle;
+        private readonly string _parentWindowHandle;
 
-        private DBusSystemDialog(IFileChooser fileChooser, IPlatformHandle handle)
+        private DBusSystemDialog(IFileChooser fileChooser, string parentWindowHandle)
         {
             _fileChooser = fileChooser;
-            _handle = handle;
+            _parentWindowHandle = parentWindowHandle;
         }
 
         public override bool CanOpen => true;
@@ -55,18 +51,15 @@ namespace Avalonia.FreeDesktop
 
         public override async Task<IReadOnlyList<IStorageFile>> OpenFilePickerAsync(FilePickerOpenOptions options)
         {
-            var parentWindow = $"x11:{_handle.Handle:X}";
             ObjectPath objectPath;
             var chooserOptions = new Dictionary<string, object>();
             var filters = ParseFilters(options.FileTypeFilter);
             if (filters.Any())
-            {
                 chooserOptions.Add("filters", filters);
-            }
 
             chooserOptions.Add("multiple", options.AllowMultiple);
 
-            objectPath = await _fileChooser.OpenFileAsync(parentWindow, options.Title ?? string.Empty, chooserOptions);
+            objectPath = await _fileChooser.OpenFileAsync(_parentWindowHandle, options.Title ?? string.Empty, chooserOptions);
 
             var request = DBusHelper.Connection!.CreateProxy<IRequest>("org.freedesktop.portal.Request", objectPath);
             var tsc = new TaskCompletionSource<string[]?>();
@@ -78,20 +71,17 @@ namespace Avalonia.FreeDesktop
 
         public override async Task<IStorageFile?> SaveFilePickerAsync(FilePickerSaveOptions options)
         {
-            var parentWindow = $"x11:{_handle.Handle:X}";
             ObjectPath objectPath;
             var chooserOptions = new Dictionary<string, object>();
             var filters = ParseFilters(options.FileTypeChoices);
             if (filters.Any())
-            {
                 chooserOptions.Add("filters", filters);
-            }
 
             if (options.SuggestedFileName is { } currentName)
                 chooserOptions.Add("current_name", currentName);
             if (options.SuggestedStartLocation?.TryGetUri(out var currentFolder) == true)
                 chooserOptions.Add("current_folder", Encoding.UTF8.GetBytes(currentFolder.ToString()));
-            objectPath = await _fileChooser.SaveFileAsync(parentWindow, options.Title ?? string.Empty, chooserOptions);
+            objectPath = await _fileChooser.SaveFileAsync(_parentWindowHandle, options.Title ?? string.Empty, chooserOptions);
 
             var request = DBusHelper.Connection!.CreateProxy<IRequest>("org.freedesktop.portal.Request", objectPath);
             var tsc = new TaskCompletionSource<string[]?>();
@@ -100,27 +90,21 @@ namespace Avalonia.FreeDesktop
             var path = uris?.FirstOrDefault() is { } filePath ? new Uri(filePath).AbsolutePath : null;
 
             if (path is null)
-            {
                 return null;
-            }
-            else
-            {
-                // WSL2 freedesktop automatically adds extension from selected file type, but we can't pass "default ext". So apply it manually.
-                path = StorageProviderHelpers.NameWithExtension(path, options.DefaultExtension, null);
 
-                return new BclStorageFile(new FileInfo(path));
-            }
+            // WSL2 freedesktop automatically adds extension from selected file type, but we can't pass "default ext". So apply it manually.
+            path = StorageProviderHelpers.NameWithExtension(path, options.DefaultExtension, null);
+            return new BclStorageFile(new FileInfo(path));
         }
 
         public override async Task<IReadOnlyList<IStorageFolder>> OpenFolderPickerAsync(FolderPickerOpenOptions options)
         {
-            var parentWindow = $"x11:{_handle.Handle:X}";
             var chooserOptions = new Dictionary<string, object>
             {
                 { "directory", true },
                 { "multiple", options.AllowMultiple }
             };
-            var objectPath = await _fileChooser.OpenFileAsync(parentWindow, options.Title ?? string.Empty, chooserOptions);
+            var objectPath = await _fileChooser.OpenFileAsync(_parentWindowHandle, options.Title ?? string.Empty, chooserOptions);
             var request = DBusHelper.Connection!.CreateProxy<IRequest>("org.freedesktop.portal.Request", objectPath);
             var tsc = new TaskCompletionSource<string[]?>();
             using var disposable = await request.WatchResponseAsync(x => tsc.SetResult(x.results["uris"] as string[]), tsc.SetException);
@@ -138,9 +122,7 @@ namespace Avalonia.FreeDesktop
             // Example: [('Images', [(0, '*.ico'), (1, 'image/png')]), ('Text', [(0, '*.txt')])]
 
             if (fileTypes is null)
-            {
                 return Array.Empty<(string name, (uint style, string extension)[])>();
-            }
 
             var filters = new List<(string name, (uint style, string extension)[])>();
             foreach (var fileType in fileTypes)
@@ -150,19 +132,12 @@ namespace Avalonia.FreeDesktop
 
                 var extensions = Enumerable.Empty<(uint, string)>();
 
-                if (fileType.Patterns is { } patterns)
-                {
+                if (fileType.Patterns is { } patterns) 
                     extensions = extensions.Concat(patterns.Select(static x => (globStyle, x)));
-                }
                 else if (fileType.MimeTypes is { } mimeTypes)
-                {
                     extensions = extensions.Concat(mimeTypes.Select(static x => (mimeStyle, x)));
-                }
-
                 if (extensions.Any())
-                {
                     filters.Add((fileType.Name, extensions.ToArray()));
-                }
             }
 
             return filters.ToArray();

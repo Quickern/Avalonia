@@ -1,28 +1,33 @@
 using System;
 using System.Collections.Generic;
 using Avalonia.Controls;
+using Avalonia.Controls.Platform;
+using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Logging;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Rendering;
 using Avalonia.Utilities;
 using Avalonia.Wayland.Egl;
 using Avalonia.Wayland.Framebuffer;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgDecorationUnstableV1;
+using NWayland.Protocols.XdgForeignUnstableV2;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal class WlWindow : IWindowImpl, IRenderTimer, WlSurface.IEvents, WlCallback.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, ZxdgToplevelDecorationV1.IEvents
+    internal class WlWindow : IWindowImpl, ITopLevelImplWithStorageProvider, IRenderTimer, WlSurface.IEvents, WlCallback.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, ZxdgToplevelDecorationV1.IEvents, ZxdgExportedV2.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly XdgSurface _xdgSurface;
         private readonly XdgToplevel _xdgToplevel;
         private readonly ZxdgToplevelDecorationV1 _toplevelDecoration;
+        private readonly ZxdgExportedV2 _exported;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
         private readonly IntPtr _eglWindow;
 
@@ -54,6 +59,9 @@ namespace Avalonia.Wayland
                 platform.XdgWmBase.Events = this;
             else
                 SetParent(popupParent);
+
+            _exported = _platform.ZxdgExporter.ExportToplevel(WlSurface);
+            _exported.Events = this;
 
             var screens = _platform.WlScreens.AllScreens;
             ClientSize = screens.Count > 0
@@ -106,6 +114,8 @@ namespace Avalonia.Wayland
         public IEnumerable<object> Surfaces { get; }
 
         public IMouseDevice? MouseDevice => _platform.WlInputDevice.MouseDevice;
+
+        public IStorageProvider StorageProvider { get; private set; }
 
         public Action<RawInputEventArgs>? Input { get; set; }
 
@@ -385,10 +395,13 @@ namespace Avalonia.Wayland
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
 
+        public void OnHandle(ZxdgExportedV2 eventSender, string handle) => StorageProvider = DBusSystemDialog.TryCreate($"wayland:{handle}")!;
+
         public void Dispose()
         {
             _platform.WlScreens.RemoveWindow(this);
             Closed?.Invoke();
+            _exported.Dispose();
             _toplevelDecoration.Dispose();
             _xdgToplevel.Dispose();
             _xdgSurface.Dispose();

@@ -41,7 +41,7 @@ namespace Avalonia.Wayland
             AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
                 .Bind<IPlatformThreadingInterface>().ToConstant(new WlPlatformThreading(this))
                 // ---
-                // TODO: Compatibility with animations for now, Clocks should be tied to the control's according ITopLevel
+                // TODO: Compatibility with animations for now, Clocks should be tied to the control's toplevel
                 // Reason: We use Wayland's FrameCallbacks as a render loop, which are variably send by the compositor.
                 .Bind<IRenderTimer>().ToConstant(new DefaultRenderTimer(60))
                 .Bind<IRenderLoop>().ToConstant(new RenderLoop())
@@ -52,12 +52,13 @@ namespace Avalonia.Wayland
                 .Bind<IClipboard>().ToConstant(wlDataHandler)
                 .Bind<IPlatformDragSource>().ToConstant(wlDataHandler)
                 .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
-                .Bind<ISystemDialogImpl>().ToConstant(DBusSystemDialog.TryCreate() as ISystemDialogImpl ?? new ManagedFileDialogExtensions.ManagedSystemDialogImpl<Window>())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
 
             WlScreens = new WlScreens(this);
             WlInputDevice = new WlInputDevice(this);
             WlDisplay.Roundtrip();
+
+            DBusHelper.TryInitialize();
 
             if (options.UseGpu)
             {
@@ -149,11 +150,5 @@ namespace Avalonia
         /// Immediate re-renders the whole scene when some element is changed on the scene. Deferred re-renders only changed elements.
         /// </remarks>
         public bool UseDeferredRendering { get; set; } = true;
-
-        /// <summary>
-        /// Enables global menu support on Linux desktop environments where it's supported (e. g. XFCE and MATE with plugin, KDE, etc).
-        /// The default value is true.
-        /// </summary>
-        public bool UseDBusMenu { get; set; } = true;
     }
 }
