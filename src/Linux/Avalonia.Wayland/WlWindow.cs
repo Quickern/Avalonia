@@ -20,7 +20,6 @@ namespace Avalonia.Wayland
     internal class WlWindow : IWindowImpl, IRenderTimer, WlSurface.IEvents, WlCallback.IEvents, XdgWmBase.IEvents, XdgSurface.IEvents, XdgToplevel.IEvents, ZxdgToplevelDecorationV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
-        private readonly WlSurface _wlSurface;
         private readonly XdgSurface _xdgSurface;
         private readonly XdgToplevel _xdgToplevel;
         private readonly ZxdgToplevelDecorationV1 _toplevelDecoration;
@@ -41,15 +40,15 @@ namespace Avalonia.Wayland
         public WlWindow(AvaloniaWaylandPlatform platform, IWindowImpl? popupParent)
         {
             _platform = platform;
-            _wlSurface = platform.WlCompositor.CreateSurface();
-            _wlSurface.Events = this;
-            _xdgSurface = platform.XdgWmBase.GetXdgSurface(_wlSurface);
+            WlSurface = platform.WlCompositor.CreateSurface();
+            WlSurface.Events = this;
+            _xdgSurface = platform.XdgWmBase.GetXdgSurface(WlSurface);
             _xdgSurface.Events = this;
             _xdgToplevel = _xdgSurface.GetToplevel();
             _xdgToplevel.Events = this;
             _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
 
-            platform.WlScreens.WlWindows.Add(_wlSurface, this);
+            platform.WlScreens.AddWindow(this);
 
             if (popupParent is null)
                 platform.XdgWmBase.Events = this;
@@ -61,15 +60,15 @@ namespace Avalonia.Wayland
                 ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
                 : new Size(400, 600);
 
-            _wlFramebufferSurface = new WlFramebufferSurface(platform, this, _wlSurface);
+            _wlFramebufferSurface = new WlFramebufferSurface(platform, this, WlSurface);
             var surfaces = new List<object> { _wlFramebufferSurface };
 
             var glFeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
             if (glFeature is EglPlatformOpenGlInterface egl)
             {
-                _eglWindow = LibWaylandEgl.wl_egl_window_create(_wlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
+                _eglWindow = LibWaylandEgl.wl_egl_window_create(WlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
                 var surfaceInfo = new WlEglSurfaceInfo(this, _eglWindow);
-                var platformSurface = new WlEglPlatformSurface(this, egl, surfaceInfo);
+                var platformSurface = new WlEglPlatformSurface(egl, surfaceInfo);
                 surfaces.Add(platformSurface);
             }
 
@@ -164,6 +163,8 @@ namespace Avalonia.Wayland
             }
         }
 
+        internal WlSurface WlSurface { get; }
+
         internal IInputRoot? InputRoot { get; private set; }
 
         public IRenderer CreateRenderer(IRenderRoot root)
@@ -179,10 +180,10 @@ namespace Avalonia.Wayland
 
         public void Invalidate(Rect rect)
         {
-            if (_wlSurface.Version >= 3)
-                _wlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
+            if (WlSurface.Version >= 3)
+                WlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
             else
-                _wlSurface.Damage((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
+                WlSurface.Damage((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
             _isDamaged = true;
         }
 
@@ -207,13 +208,14 @@ namespace Avalonia.Wayland
         public void Show(bool activate, bool isDialog)
         {
             _isDirty = true;
+            RequestFrame();
             Paint?.Invoke(Rect.Empty);
         }
 
         public void Hide()
         {
-            _wlSurface.Attach(null, 0, 0);
-            _wlSurface.Commit();
+            WlSurface.Attach(null, 0, 0);
+            WlSurface.Commit();
         }
 
         public void Activate() { }
@@ -293,20 +295,20 @@ namespace Avalonia.Wayland
                 return;
             RenderScaling = screen.PixelDensity;
             ScalingChanged?.Invoke(RenderScaling);
-            if (_wlSurface.Version >= 3)
-                _wlSurface.SetBufferScale((int)RenderScaling);
+            if (WlSurface.Version >= 3)
+                WlSurface.SetBufferScale((int)RenderScaling);
         }
 
         public void OnLeave(WlSurface eventSender, WlOutput output) { }
 
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
+            Tick?.Invoke(TimeSpan.FromMilliseconds(callbackData - _lastTick));
             _wlCallback!.Dispose();
             _wlCallback = null;
-            Tick?.Invoke(TimeSpan.FromMilliseconds(callbackData - _lastTick));
             RequestFrame();
             Paint?.Invoke(Rect.Empty);
-            _wlSurface.Commit();
+            WlSurface.Commit();
             _lastTick = callbackData;
         }
 
@@ -369,13 +371,7 @@ namespace Avalonia.Wayland
             ClientSize = size;
         }
 
-        public void OnClose(XdgToplevel eventSender)
-        {
-            if (Closing.Invoke())
-                return;
-            _platform.WlScreens.WlWindows.Remove(_wlSurface);
-            Closed?.Invoke();
-        }
+        public void OnClose(XdgToplevel eventSender) => Closing.Invoke();
 
         public void OnConfigureBounds(XdgToplevel eventSender, int width, int height) { }
 
@@ -391,19 +387,23 @@ namespace Avalonia.Wayland
 
         public void Dispose()
         {
+            _platform.WlScreens.RemoveWindow(this);
+            Closed?.Invoke();
             _toplevelDecoration.Dispose();
             _xdgToplevel.Dispose();
             _xdgSurface.Dispose();
             _wlFramebufferSurface.Dispose();
-            _wlSurface.Dispose();
+            _platform.WlDisplay.Roundtrip();
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
+            WlSurface.Dispose();
         }
 
         internal void RequestFrame()
         {
-            _wlCallback?.Dispose();
-            _wlCallback = _wlSurface.Frame();
+            if (_wlCallback is not null)
+                return;
+            _wlCallback = WlSurface.Frame();
             _wlCallback.Events = this;
         }
 

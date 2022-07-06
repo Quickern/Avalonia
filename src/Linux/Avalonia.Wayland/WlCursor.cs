@@ -11,10 +11,7 @@ namespace Avalonia.Wayland
             ImageCount = imageCount;
         }
 
-        public abstract WlCursorImage this[int index]
-        {
-            get;
-        }
+        public abstract WlCursorImage this[int index] { get; }
 
         public uint ImageCount { get; }
 

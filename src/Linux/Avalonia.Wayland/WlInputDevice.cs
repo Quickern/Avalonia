@@ -109,10 +109,14 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, WlFixed surfaceX, WlFixed surfaceY)
         {
-            _platform.WlScreens.OnEnterSurface(surface);
+            _platform.WlScreens.SetActiveSurface(surface);
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.InputRoot is null)
+                return;
             PointerSurfaceSerial = serial;
             _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
-            SetCursor(null);
+            var args = new RawPointerEventArgs(MouseDevice!, 0, window.InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers);
+            window.Input?.Invoke(args);
         }
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
@@ -140,12 +144,51 @@ namespace Avalonia.Wayland
             if (window?.InputRoot is null)
                 return;
             Serial = serial;
-            var type = button switch
+            RawPointerEventType type;
+            switch (button)
             {
-                (uint)EvKey.BTN_LEFT => state == WlPointer.ButtonStateEnum.Pressed ? RawPointerEventType.LeftButtonDown : RawPointerEventType.LeftButtonUp,
-                (uint)EvKey.BTN_RIGHT => state == WlPointer.ButtonStateEnum.Pressed ? RawPointerEventType.RightButtonDown : RawPointerEventType.RightButtonUp,
-                (uint)EvKey.BTN_MIDDLE => state == WlPointer.ButtonStateEnum.Pressed ? RawPointerEventType.MiddleButtonDown : RawPointerEventType.MiddleButtonUp
-            };
+                case (uint)EvKey.BTN_LEFT:
+                    if (state == WlPointer.ButtonStateEnum.Pressed)
+                    {
+                        type = RawPointerEventType.LeftButtonDown;
+                        RawInputModifiers |= RawInputModifiers.LeftMouseButton;
+                    }
+                    else
+                    {
+                        type = RawPointerEventType.LeftButtonUp;
+                        RawInputModifiers &= ~RawInputModifiers.LeftMouseButton;
+                    }
+
+                    break;
+                case (uint)EvKey.BTN_RIGHT:
+                    if (state == WlPointer.ButtonStateEnum.Pressed)
+                    {
+                        type = RawPointerEventType.RightButtonDown;
+                        RawInputModifiers |= RawInputModifiers.RightMouseButton;
+                    }
+                    else
+                    {
+                        type = RawPointerEventType.RightButtonUp;
+                        RawInputModifiers &= ~RawInputModifiers.RightMouseButton;
+                    }
+
+                    break;
+                case (uint)EvKey.BTN_MIDDLE:
+                    if (state == WlPointer.ButtonStateEnum.Pressed)
+                    {
+                        type = RawPointerEventType.MiddleButtonDown;
+                        RawInputModifiers |= RawInputModifiers.MiddleMouseButton;
+                    }
+                    else
+                    {
+                        type = RawPointerEventType.MiddleButtonUp;
+                        RawInputModifiers &= ~RawInputModifiers.MiddleMouseButton;
+                    }
+
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(button));
+            }
 
             var args = new RawPointerEventArgs(MouseDevice!, time, window.InputRoot, type, _pointerPosition, RawInputModifiers);
             window.Input?.Invoke(args);
@@ -223,7 +266,7 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
         {
-            _platform.WlScreens.OnEnterSurface(surface);
+            _platform.WlScreens.SetActiveSurface(surface);
             Serial = serial;
             KeyboardEnterSerial = serial;
         }
@@ -276,15 +319,22 @@ namespace Avalonia.Wayland
             Serial = serial;
             LibXkbCommon.xkb_state_update_mask(_xkbState, modsDepressed, modsLatched, modsLocked, 0, 0, group);
             var mask = LibXkbCommon.xkb_state_serialize_mods(_xkbState, LibXkbCommon.XkbStateComponent.XKB_STATE_MODS_EFFECTIVE);
-            RawInputModifiers = RawInputModifiers.None;
             if ((mask & _ctrlMask) != 0)
                 RawInputModifiers |= RawInputModifiers.Control;
+            else
+                RawInputModifiers &= ~RawInputModifiers.Control;
             if ((mask & _altMask) != 0)
                 RawInputModifiers |= RawInputModifiers.Alt;
+            else
+                RawInputModifiers &= ~RawInputModifiers.Alt;
             if ((mask & _shiftMask) != 0)
                 RawInputModifiers |= RawInputModifiers.Shift;
+            else
+                RawInputModifiers &= ~RawInputModifiers.Shift;
             if ((mask & _metaMask) != 0)
                 RawInputModifiers |= RawInputModifiers.Meta;
+            else
+                RawInputModifiers &= ~RawInputModifiers.Meta;
         }
 
         public void OnRepeatInfo(WlKeyboard eventSender, int rate, int delay)

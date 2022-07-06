@@ -7,6 +7,7 @@ using System.Threading;
 using Avalonia.FreeDesktop;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using NWayland.Interop;
 
 namespace Avalonia.Wayland
 {
@@ -43,24 +44,35 @@ namespace Avalonia.Wayland
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var nextTick = DispatchTimers(cancellationToken);
-
                 while (_platform.WlDisplay.PrepareRead() != 0)
                     _platform.WlDisplay.DispatchPending();
 
-                if (cancellationToken.IsCancellationRequested || !FlushDisplay())
+                if (cancellationToken.IsCancellationRequested)
                 {
                     _platform.WlDisplay.CancelRead();
                     break;
                 }
 
+                if (!FlushDisplay())
+                {
+                    _platform.WlDisplay.CancelRead();
+                    throw new NWaylandException($"Failed to flush display. Errno: {Marshal.GetLastWin32Error()}");
+                }
+
+                var nextTick = DispatchTimers(cancellationToken);
                 var timeout = nextTick == TimeSpan.MinValue ? -1 : Math.Max(-1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
                 var ret = LibC.poll(&pollFd, new IntPtr(1), timeout);
 
-                if (cancellationToken.IsCancellationRequested || ret < 0)
+                if (cancellationToken.IsCancellationRequested)
                 {
                     _platform.WlDisplay.CancelRead();
                     break;
+                }
+
+                if (ret < 0)
+                {
+                    _platform.WlDisplay.CancelRead();
+                    throw new NWaylandException($"Failed to poll display. Errno: {Marshal.GetLastWin32Error()}");
                 }
 
                 if ((pollFd.revents & (int)EpollEvents.EPOLLIN) > 0)

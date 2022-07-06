@@ -11,6 +11,7 @@ namespace Avalonia.Wayland
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly Dictionary<uint, WlScreen> _wlScreens = new();
         private readonly Dictionary<WlOutput, WlScreen> _wlOutputs = new();
+        private readonly Dictionary<WlSurface, WlWindow> _wlWindows = new();
 
         public WlScreens(AvaloniaWaylandPlatform platform)
         {
@@ -23,8 +24,6 @@ namespace Avalonia.Wayland
 
         public IReadOnlyList<Screen> AllScreens => _wlScreens.Values.Select(ScreenForWlScreen).ToList();
 
-        public Dictionary<WlSurface, WlWindow> WlWindows { get; } = new();
-
         public WlWindow? ActiveWindow { get; private set; }
 
         public Screen? ScreenFromWindow(IWindowBaseImpl window) => ScreenHelper.ScreenFromWindow(window, AllScreens);
@@ -35,18 +34,27 @@ namespace Avalonia.Wayland
 
         public Screen ScreenFromOutput(WlOutput wlOutput) => ScreenForWlScreen(_wlOutputs[wlOutput]);
 
-        public void OnEnterSurface(WlSurface wlSurface)
-        {
-            if (WlWindows.TryGetValue(wlSurface, out var window))
-                _platform.WlScreens.ActiveWindow = window;
-        }
-
         public void Dispose()
         {
             _platform.WlRegistryHandler.GlobalAdded -= OnGlobalAdded;
             _platform.WlRegistryHandler.GlobalRemoved -= OnGlobalRemoved;
             foreach (var wlScreen in _wlScreens.Values)
                 wlScreen.Dispose();
+        }
+
+        internal void AddWindow(WlWindow window) => _wlWindows.Add(window.WlSurface, window);
+
+        internal void RemoveWindow(WlWindow window)
+        {
+            _wlWindows.Remove(window.WlSurface);
+            if (ActiveWindow == window)
+                ActiveWindow = null;
+        }
+
+        internal void SetActiveSurface(WlSurface surface)
+        {
+            if (_wlWindows.TryGetValue(surface, out var window))
+                ActiveWindow = window;
         }
 
         private void OnGlobalAdded(WlRegistryHandler.GlobalInfo globalInfo)
