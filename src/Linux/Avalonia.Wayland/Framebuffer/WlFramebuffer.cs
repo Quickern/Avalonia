@@ -6,13 +6,11 @@ namespace Avalonia.Wayland.Framebuffer
 {
     internal class WlFramebuffer : ILockedFramebuffer
     {
-        private readonly WlWindow _wlWindow;
         private readonly WlSurface _wlSurface;
         private readonly WlBuffer _wlBuffer;
 
-        public WlFramebuffer(WlWindow wlWindow, WlSurface wlSurface, WlBuffer wlBuffer, IntPtr address, PixelSize size, int stride, PixelFormat format)
+        public WlFramebuffer(WlSurface wlSurface, WlBuffer wlBuffer, IntPtr address, PixelSize size, int stride, PixelFormat format)
         {
-            _wlWindow = wlWindow;
             _wlSurface = wlSurface;
             _wlBuffer = wlBuffer;
             Address = address;
@@ -24,7 +22,6 @@ namespace Avalonia.Wayland.Framebuffer
 
         public void Dispose()
         {
-            _wlWindow.RequestFrame();
             _wlSurface.Attach(_wlBuffer, 0, 0);
             _wlSurface.Damage(0, 0, Size.Width, Size.Height);
             _wlSurface.Commit();
