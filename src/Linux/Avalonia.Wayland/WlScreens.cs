@@ -78,7 +78,7 @@ namespace Avalonia.Wayland
             wlScreen.Dispose();
         }
 
-        private static Screen ScreenForWlScreen(WlScreen wlScreen) => new(wlScreen.PixelDensity, wlScreen.Bounds, wlScreen.WorkingArea, true);
+        private static Screen ScreenForWlScreen(WlScreen wlScreen) => new(wlScreen.PixelDensity, wlScreen.Bounds, wlScreen.WorkingArea, false);
 
         private sealed class WlScreen : WlOutput.IEvents, IDisposable
         {

@@ -147,47 +147,48 @@ namespace Avalonia.Wayland
             RawPointerEventType type;
             switch (button)
             {
-                case (uint)EvKey.BTN_LEFT:
-                    if (state == WlPointer.ButtonStateEnum.Pressed)
-                    {
-                        type = RawPointerEventType.LeftButtonDown;
-                        RawInputModifiers |= RawInputModifiers.LeftMouseButton;
-                    }
-                    else
-                    {
-                        type = RawPointerEventType.LeftButtonUp;
-                        RawInputModifiers &= ~RawInputModifiers.LeftMouseButton;
-                    }
-
+                case (uint)EvKey.BTN_LEFT when state is WlPointer.ButtonStateEnum.Pressed:
+                    type = RawPointerEventType.LeftButtonDown;
+                    RawInputModifiers |= RawInputModifiers.LeftMouseButton;
                     break;
-                case (uint)EvKey.BTN_RIGHT:
-                    if (state == WlPointer.ButtonStateEnum.Pressed)
-                    {
-                        type = RawPointerEventType.RightButtonDown;
-                        RawInputModifiers |= RawInputModifiers.RightMouseButton;
-                    }
-                    else
-                    {
-                        type = RawPointerEventType.RightButtonUp;
-                        RawInputModifiers &= ~RawInputModifiers.RightMouseButton;
-                    }
-
+                case (uint)EvKey.BTN_LEFT when state is WlPointer.ButtonStateEnum.Released:
+                    type = RawPointerEventType.LeftButtonUp;
+                    RawInputModifiers &= ~RawInputModifiers.LeftMouseButton;
                     break;
-                case (uint)EvKey.BTN_MIDDLE:
-                    if (state == WlPointer.ButtonStateEnum.Pressed)
-                    {
-                        type = RawPointerEventType.MiddleButtonDown;
-                        RawInputModifiers |= RawInputModifiers.MiddleMouseButton;
-                    }
-                    else
-                    {
-                        type = RawPointerEventType.MiddleButtonUp;
-                        RawInputModifiers &= ~RawInputModifiers.MiddleMouseButton;
-                    }
-
+                case (uint)EvKey.BTN_RIGHT when state is WlPointer.ButtonStateEnum.Pressed:
+                    type = RawPointerEventType.RightButtonDown;
+                    RawInputModifiers |= RawInputModifiers.RightMouseButton;
+                    break;
+                case (uint)EvKey.BTN_RIGHT when state is WlPointer.ButtonStateEnum.Released:
+                    type = RawPointerEventType.RightButtonUp;
+                    RawInputModifiers &= ~RawInputModifiers.RightMouseButton;
+                    break;
+                case (uint)EvKey.BTN_MIDDLE when state is WlPointer.ButtonStateEnum.Pressed:
+                    type = RawPointerEventType.MiddleButtonDown;
+                    RawInputModifiers |= RawInputModifiers.MiddleMouseButton;
+                    break;
+                case (uint)EvKey.BTN_MIDDLE when state is WlPointer.ButtonStateEnum.Released:
+                    type = RawPointerEventType.MiddleButtonUp;
+                    RawInputModifiers &= ~RawInputModifiers.MiddleMouseButton;
+                    break;
+                case (uint)EvKey.BTN_SIDE when state is WlPointer.ButtonStateEnum.Pressed:
+                    type = RawPointerEventType.XButton2Down;
+                    RawInputModifiers |= RawInputModifiers.XButton2MouseButton;
+                    break;
+                case (uint)EvKey.BTN_SIDE when state is WlPointer.ButtonStateEnum.Released:
+                    type = RawPointerEventType.XButton2Up;
+                    RawInputModifiers &= ~RawInputModifiers.XButton2MouseButton;
+                    break;
+                case (uint)EvKey.BTN_EXTRA when state is WlPointer.ButtonStateEnum.Pressed:
+                    type = RawPointerEventType.XButton1Down;
+                    RawInputModifiers |= RawInputModifiers.XButton1MouseButton;
+                    break;
+                case (uint)EvKey.BTN_EXTRA when state is WlPointer.ButtonStateEnum.Released:
+                    type = RawPointerEventType.XButton1Up;
+                    RawInputModifiers &= ~RawInputModifiers.XButton1MouseButton;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(button));
+                    return;
             }
 
             var args = new RawPointerEventArgs(MouseDevice!, time, window.InputRoot, type, _pointerPosition, RawInputModifiers);
