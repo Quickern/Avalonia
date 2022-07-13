@@ -263,9 +263,19 @@ namespace Avalonia.Wayland
 
         public void CanResize(bool value) { } // TODO
 
-        public void BeginMoveDrag(PointerPressedEventArgs e) => _xdgToplevel.Move(_platform.WlSeat, _platform.WlInputDevice.Serial);
+        public void BeginMoveDrag(PointerPressedEventArgs e)
+        {
+            _xdgToplevel.Move(_platform.WlSeat, _platform.WlInputDevice.Serial);
+            e.Pointer.Capture(null);
+        }
 
-        public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e) => _xdgToplevel.Resize(_platform.WlSeat, _platform.WlInputDevice.Serial, _windowEdges[edge]);
+        public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e)
+        {
+            var wlEdge = _windowEdges[edge];
+            Console.WriteLine(wlEdge);
+            _xdgToplevel.Resize(_platform.WlSeat, _platform.WlInputDevice.Serial, wlEdge);
+            e.Pointer.Capture(null);
+        }
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
@@ -422,13 +432,13 @@ namespace Avalonia.Wayland
         private static readonly Dictionary<WindowEdge, XdgToplevel.ResizeEdgeEnum> _windowEdges = new()
         {
             { WindowEdge.North, XdgToplevel.ResizeEdgeEnum.Top },
+            { WindowEdge.NorthEast, XdgToplevel.ResizeEdgeEnum.TopRight },
             { WindowEdge.East, XdgToplevel.ResizeEdgeEnum.Right },
+            { WindowEdge.SouthEast, XdgToplevel.ResizeEdgeEnum.BottomRight },
             { WindowEdge.South, XdgToplevel.ResizeEdgeEnum.Bottom },
+            { WindowEdge.SouthWest, XdgToplevel.ResizeEdgeEnum.BottomLeft },
             { WindowEdge.West, XdgToplevel.ResizeEdgeEnum.Left },
-            { WindowEdge.NorthEast, XdgToplevel.ResizeEdgeEnum.TopLeft },
-            { WindowEdge.SouthEast, XdgToplevel.ResizeEdgeEnum.BottomLeft },
-            { WindowEdge.NorthWest, XdgToplevel.ResizeEdgeEnum.TopRight },
-            { WindowEdge.SouthWest, XdgToplevel.ResizeEdgeEnum.BottomRight }
+            { WindowEdge.NorthWest, XdgToplevel.ResizeEdgeEnum.TopLeft }
         };
     }
 }

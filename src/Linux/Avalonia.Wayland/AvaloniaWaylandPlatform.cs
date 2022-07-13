@@ -1,7 +1,6 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
-using Avalonia.Dialogs;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -10,8 +9,8 @@ using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Wayland;
+using NWayland.Protocols.TextInputUnstableV3;
 using NWayland.Protocols.Wayland;
-using NWayland.Protocols.XdgActivationV1;
 using NWayland.Protocols.XdgDecorationUnstableV1;
 using NWayland.Protocols.XdgForeignUnstableV2;
 using NWayland.Protocols.XdgShell;
@@ -33,9 +32,9 @@ namespace Avalonia.Wayland
             WlShm = WlRegistryHandler.BindRequiredInterface(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
             WlDataDeviceManager = WlRegistryHandler.BindRequiredInterface(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
             XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
-            XdgActivation = WlRegistryHandler.BindRequiredInterface(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.BindRequiredInterface(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
-            ZxdgExporter = WlRegistryHandler.BindRequiredInterface(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
+            ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
+            ZwpTextInput = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
 
             var wlDataHandler = new WlDataHandler(this);
             AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
@@ -85,11 +84,11 @@ namespace Avalonia.Wayland
 
         internal XdgWmBase XdgWmBase { get; }
 
-        internal XdgActivationV1 XdgActivation { get; }
-
         internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; }
 
-        internal ZxdgExporterV2 ZxdgExporter { get; }
+        internal ZxdgExporterV2? ZxdgExporter { get; }
+
+        internal ZwpTextInputManagerV3? ZwpTextInput { get; }
 
         internal WlScreens WlScreens { get; }
 
@@ -97,10 +96,7 @@ namespace Avalonia.Wayland
 
         public IWindowImpl CreateWindow() => new WlWindow(this, null);
 
-        public IWindowImpl CreateEmbeddableWindow()
-        {
-            throw new NotSupportedException();
-        }
+        public IWindowImpl CreateEmbeddableWindow() => throw new NotSupportedException();
 
         public ITrayIconImpl? CreateTrayIcon()
         {
@@ -110,11 +106,15 @@ namespace Avalonia.Wayland
 
         public void Dispose()
         {
+            ZxdgDecorationManager.Dispose();
+            ZxdgExporter?.Dispose();
+            ZwpTextInput?.Dispose();
+            WlDataDeviceManager.Dispose();
+            WlInputDevice.Dispose();
+            WlScreens.Dispose();
             WlSeat.Dispose();
             WlShm.Dispose();
             XdgWmBase.Dispose();
-            XdgActivation.Dispose();
-            ZxdgDecorationManager.Dispose();
             WlCompositor.Dispose();
             WlRegistryHandler.Dispose();
             WlDisplay.Dispose();
