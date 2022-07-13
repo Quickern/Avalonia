@@ -190,10 +190,7 @@ namespace Avalonia.Wayland
 
         public void Invalidate(Rect rect)
         {
-            if (WlSurface.Version >= 3)
-                WlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
-            else
-                WlSurface.Damage((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);
+            WlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)(rect.Width * RenderScaling), (int)(rect.Height * RenderScaling));
             _isDamaged = true;
         }
 
@@ -384,6 +381,8 @@ namespace Avalonia.Wayland
         public void OnClose(XdgToplevel eventSender) => Closing.Invoke();
 
         public void OnConfigureBounds(XdgToplevel eventSender, int width, int height) { }
+
+        public void OnWmCapabilities(XdgToplevel eventSender, ReadOnlySpan<XdgToplevel.WmCapabilitiesEnum> capabilities) { }
 
         public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)
         {

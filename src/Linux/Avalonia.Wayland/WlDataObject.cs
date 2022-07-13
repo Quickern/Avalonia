@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
@@ -11,76 +12,87 @@ namespace Avalonia.Wayland
     internal sealed class WlDataObject : IDataObject, IDisposable, WlDataOffer.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
-        private readonly List<string> _mimeTypes;
 
         public WlDataObject(AvaloniaWaylandPlatform platform, WlDataOffer wlDataOffer)
         {
             _platform = platform;
             WlDataOffer = wlDataOffer;
             WlDataOffer.Events = this;
-            _mimeTypes = new List<string>();
+            MimeTypes = new List<string>();
         }
 
-        public WlDataOffer WlDataOffer { get; }
+        internal WlDataOffer WlDataOffer { get; }
 
-        public DragDropEffects DragDropEffects { get; private set; }
+        internal List<string> MimeTypes { get; }
 
-        public IEnumerable<string> GetDataFormats() => _mimeTypes;
+        internal DragDropEffects OfferedDragDropEffects { get; private set; }
 
-        public bool Contains(string dataFormat) => _mimeTypes.Contains(dataFormat);
+        internal DragDropEffects MatchedDragDropEffects { get; private set; }
 
-        public unsafe string? GetText()
+        public IEnumerable<string> GetDataFormats()
         {
-            var fd = Receive(MimeTypes.Text);
-            if (fd < 0)
-                return null;
-
-            Span<byte> buffer = stackalloc byte[1024];
-            var sb = new StringBuilder();
-            fixed (byte* ptr = buffer)
+            foreach (var mimeType in MimeTypes)
             {
-                while (true)
+                switch (mimeType)
                 {
-                    var read = LibC.read(fd, (IntPtr)ptr, 1024);
-                    if (read <= 0)
+                    case Wayland.MimeTypes.Text:
+                    case Wayland.MimeTypes.TextUtf8:
+                        yield return DataFormats.Text;
                         break;
-                    sb.Append(Encoding.UTF8.GetString(ptr, read));
+                    case Wayland.MimeTypes.UriList:
+                        yield return DataFormats.FileNames;
+                        break;
+                    default:
+                        yield return mimeType;
+                        break;
                 }
             }
+        }
 
-            LibC.close(fd);
+        public bool Contains(string dataFormat) => dataFormat switch
+            {
+                DataFormats.Text => MimeTypes.Contains(Wayland.MimeTypes.Text) || MimeTypes.Contains(Wayland.MimeTypes.TextUtf8),
+                DataFormats.FileNames => MimeTypes.Contains(Wayland.MimeTypes.UriList),
+                _ => MimeTypes.Contains(dataFormat)
+            };
+
+        public string? GetText()
+        {
+            var mimeType = MimeTypes.FirstOrDefault(static x => x is Wayland.MimeTypes.Text) ?? MimeTypes.FirstOrDefault(static x => x is Wayland.MimeTypes.TextUtf8);
+            if (mimeType is null)
+                return null;
+            var fd = Receive(mimeType);
+            if (fd < 0)
+                return null;
+            var sb = ReceiveText(fd);
             return sb.ToString();
         }
 
-        public unsafe IEnumerable<string>? GetFileNames()
+        public IEnumerable<string>? GetFileNames()
         {
-            var fd = Receive(MimeTypes.UriList);
+            if (!MimeTypes.Contains(Wayland.MimeTypes.UriList))
+                return null;
+            var fd = Receive(Wayland.MimeTypes.UriList);
             if (fd < 0)
                 return null;
-
-            Span<byte> buffer = stackalloc byte[1024];
-            var sb = new StringBuilder();
-            fixed (byte* ptr = buffer)
-            {
-                while (true)
-                {
-                    var read = LibC.read(fd, (IntPtr)ptr, 1024);
-                    if (read <= 0)
-                        break;
-                    sb.Append(Encoding.UTF8.GetString(ptr, read));
-                }
-            }
-
-            LibC.close(fd);
+            var sb = ReceiveText(fd);
             return sb.ToString().Split('\n');
         }
 
         public unsafe object? Get(string dataFormat)
         {
-            if (_mimeTypes.Count <= 0)
+            switch (dataFormat)
+            {
+                case DataFormats.Text:
+                    return GetText();
+                case DataFormats.FileNames:
+                    return GetFileNames();
+            }
+
+            if (!MimeTypes.Contains(dataFormat))
                 return null;
 
-            var fd = Receive(_mimeTypes[0]);
+            var fd = Receive(dataFormat);
             if (fd < 0)
                 return null;
 
@@ -101,11 +113,11 @@ namespace Avalonia.Wayland
             return ms.ToArray();
         }
 
-        public void OnOffer(WlDataOffer eventSender, string mimeType) => _mimeTypes.Add(mimeType);
+        public void OnOffer(WlDataOffer eventSender, string mimeType) => MimeTypes.Add(mimeType);
 
-        public void OnSourceActions(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum sourceActions) => DragDropEffects |= (DragDropEffects)sourceActions;
+        public void OnSourceActions(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum sourceActions) => OfferedDragDropEffects = (DragDropEffects)sourceActions;
 
-        public void OnAction(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum dndAction) => DragDropEffects = (DragDropEffects)dndAction;
+        public void OnAction(WlDataOffer eventSender, WlDataDeviceManager.DndActionEnum dndAction) => MatchedDragDropEffects = (DragDropEffects)dndAction;
 
         public void Dispose() => WlDataOffer.Dispose();
 
@@ -122,6 +134,25 @@ namespace Avalonia.Wayland
             _platform.WlDisplay.Roundtrip();
             LibC.close(fds[1]);
             return fds[0];
+        }
+
+        private static unsafe StringBuilder ReceiveText(int fd)
+        {
+            Span<byte> buffer = stackalloc byte[1024];
+            var sb = new StringBuilder();
+            fixed (byte* ptr = buffer)
+            {
+                while (true)
+                {
+                    var read = LibC.read(fd, (IntPtr)ptr, 1024);
+                    if (read <= 0)
+                        break;
+                    sb.Append(Encoding.UTF8.GetString(ptr, read));
+                }
+            }
+
+            LibC.close(fd);
+            return sb;
         }
     }
 }

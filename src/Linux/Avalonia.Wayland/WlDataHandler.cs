@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,6 +7,7 @@ using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
+using Avalonia.Platform;
 using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
@@ -29,12 +29,13 @@ namespace Avalonia.Wayland
             _wlDataDevice.Events = _wlDataDeviceHandler;
         }
 
-        public Task<string> GetTextAsync() => Task.FromResult(_wlDataDeviceHandler.CurrentOffer?.GetText() ?? string.Empty);
+        public Task<string> GetTextAsync() => Task.FromResult(_wlDataDeviceHandler.SelectionOffer?.GetText() ?? string.Empty);
 
         public Task SetTextAsync(string text)
         {
-            SetText(text);
-            return Task.CompletedTask;
+            var data = new DataObject();
+            data.Set(DataFormats.Text, text);
+            return SetDataObjectAsync(data);
         }
 
         public Task ClearAsync()
@@ -45,179 +46,198 @@ namespace Avalonia.Wayland
 
         public Task SetDataObjectAsync(IDataObject data)
         {
-            foreach (var format in data.GetDataFormats())
-            {
-                switch (format)
-                {
-                    case DataFormats.Text:
-                        SetText(data.GetText());
-                        return Task.CompletedTask;
-                    case DataFormats.FileNames:
-                        SetUris(data.GetFileNames());
-                        return Task.CompletedTask;
-                }
-            }
-
-            SetDataObject(data);
+            var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
+            _currentDataSourceHandler = new WlDataSourceHandler(_platform, dataSource, data);
+            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
             return Task.CompletedTask;
         }
 
         public Task<string[]> GetFormatsAsync() =>
-            _wlDataDeviceHandler.CurrentOffer is null
+            _wlDataDeviceHandler.SelectionOffer is null
                 ? Task.FromResult(Array.Empty<string>())
-                : Task.FromResult(_wlDataDeviceHandler.CurrentOffer.GetDataFormats().ToArray());
+                : Task.FromResult(_wlDataDeviceHandler.SelectionOffer.GetDataFormats().ToArray());
 
-        public Task<object?> GetDataAsync(string format) =>
-            format switch
-            {
-                DataFormats.Text => Task.FromResult<object?>(_wlDataDeviceHandler.CurrentOffer?.GetText()),
-                DataFormats.FileNames => Task.FromResult<object?>(_wlDataDeviceHandler.CurrentOffer?.GetFileNames()),
-                _ => Task.FromResult(_wlDataDeviceHandler.CurrentOffer?.Get(format))
-            };
+        public Task<object?> GetDataAsync(string format) => Task.FromResult(_wlDataDeviceHandler.SelectionOffer?.Get(format));
 
         public Task<DragDropEffects> DoDragDrop(PointerEventArgs triggerEvent, IDataObject data, DragDropEffects allowedEffects)
         {
             var window = _platform.WlScreens.ActiveWindow;
             if (window is null)
                 return Task.FromResult(DragDropEffects.None);
+            triggerEvent.Pointer.Capture(null);
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { DataObject = data };
-            dataSource.Events = _currentDataSourceHandler;
-            foreach (var mimeType in MimeTypes.GetMimeTypes(data))
-                dataSource.Offer(mimeType);
+            _currentDataSourceHandler = new WlDataSourceHandler(_platform, dataSource, data, allowedEffects);
             _wlDataDevice.StartDrag(dataSource, window.WlSurface, null, _platform.WlInputDevice.Serial);
             return _currentDataSourceHandler.DnD;
         }
 
         public void Dispose() => _wlDataDevice.Dispose();
 
-        private void SetText(string text)
-        {
-            var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Text = text };
-            dataSource.Events = _currentDataSourceHandler;
-            dataSource.Offer(MimeTypes.Text);
-            dataSource.Offer(MimeTypes.TextUtf8);
-            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
-        }
-
-        private void SetUris(IEnumerable<string> uris)
-        {
-            var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { Uris = uris };
-            dataSource.Events = _currentDataSourceHandler;
-            dataSource.Offer(MimeTypes.UriList);
-            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
-        }
-
-        private void SetDataObject(IDataObject dataObject)
-        {
-            var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
-            _currentDataSourceHandler = new WlDataSourceHandler(dataSource) { DataObject = dataObject };
-            dataSource.Events = _currentDataSourceHandler;
-            foreach (var format in MimeTypes.GetMimeTypes(dataObject))
-                dataSource.Offer(format);
-            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
-        }
-
         private sealed class WlDataDeviceHandler : IDisposable, WlDataDevice.IEvents
         {
             private readonly AvaloniaWaylandPlatform _platform;
 
+            private uint _enterSerial;
             private Point _position;
+            private WlDataObject? _currentOffer;
+            private WlDataObject? _dndOffer;
 
             public WlDataDeviceHandler(AvaloniaWaylandPlatform platform)
             {
                 _platform = platform;
             }
 
-            public WlDataObject? CurrentOffer { get; private set; }
+            internal WlDataObject? SelectionOffer { get; private set; }
 
-            public void OnDataOffer(WlDataDevice eventSender, WlDataOffer id)
-            {
-                CurrentOffer?.Dispose();
-                CurrentOffer = new WlDataObject(_platform, id);
-            }
+            public void OnDataOffer(WlDataDevice eventSender, WlDataOffer id) => _currentOffer = new WlDataObject(_platform, id);
 
-            public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, WlFixed x, WlFixed y, WlDataOffer id)
+            public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, WlFixed x, WlFixed y, WlDataOffer? id)
             {
-                if (CurrentOffer is null || _platform.WlScreens.ActiveWindow?.InputRoot is null)
+                DisposeDnD();
+                if (_currentOffer is null || _currentOffer.WlDataOffer != id)
+                    return;
+                _enterSerial = serial;
+                _dndOffer = _currentOffer;
+                _currentOffer = null;
+                if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
                     return;
                 _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var inputRoot = _platform.WlScreens.ActiveWindow.InputRoot;
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, inputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, inputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
                 _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
-                CurrentOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)args.Effects);
+                var preferredAction = GetPreferredEffect(args.Effects, _platform.WlInputDevice.RawInputModifiers);
+                _dndOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)preferredAction);
+                Accept(args);
             }
 
-            public void OnLeave(WlDataDevice eventSender) => CurrentOffer?.Dispose();
+            public void OnLeave(WlDataDevice eventSender) => DisposeDnD();
 
             public void OnMotion(WlDataDevice eventSender, uint time, WlFixed x, WlFixed y)
             {
                 var window = _platform.WlScreens.ActiveWindow;
-                if (window?.InputRoot is null || CurrentOffer is null)
+                if (window?.InputRoot is null || _dndOffer is null)
                     return;
                 _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, window.InputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, window.InputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
                 window.Input?.Invoke(args);
-                CurrentOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)args.Effects);
+                Accept(args);
             }
 
             public void OnDrop(WlDataDevice eventSender)
             {
                 var window = _platform.WlScreens.ActiveWindow;
-                if (window?.InputRoot is null || CurrentOffer is null)
+                if (window?.InputRoot is null || _dndOffer is null)
                     return;
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, window.InputRoot, _position, CurrentOffer, CurrentOffer.DragDropEffects, modifiers);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, window.InputRoot, _position, _dndOffer, _dndOffer.MatchedDragDropEffects, modifiers);
                 window.Input?.Invoke(args);
+                if (args.Effects != DragDropEffects.None)
+                    _dndOffer.WlDataOffer.Finish();
+                DisposeDnD();
             }
 
             public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
             {
-                if (id is not null)
+                DisposeSelection();
+                if (_currentOffer?.WlDataOffer != id)
                     return;
-                CurrentOffer?.Dispose();
-                CurrentOffer = null;
+                SelectionOffer = _currentOffer;
+                _currentOffer = null;
             }
 
-            public void Dispose() => CurrentOffer?.Dispose();
+            public void Dispose()
+            {
+                DisposeSelection();
+                DisposeDnD();
+            }
+
+            private void Accept(RawDragEvent args)
+            {
+                var preferredAction = GetPreferredEffect(args.Effects, _platform.WlInputDevice.RawInputModifiers);
+                _dndOffer!.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)preferredAction);
+                if (_dndOffer.MimeTypes.Count > 0 && args.Effects != DragDropEffects.None)
+                    _dndOffer.WlDataOffer.Accept(_enterSerial, _dndOffer.MimeTypes[0]);
+                else
+                    _dndOffer.WlDataOffer.Accept(_enterSerial, null);
+            }
+
+            private void DisposeSelection()
+            {
+                SelectionOffer?.Dispose();
+                SelectionOffer = null;
+            }
+
+            private void DisposeDnD()
+            {
+                _dndOffer?.Dispose();
+                _dndOffer = null;
+            }
+
+            private static DragDropEffects GetPreferredEffect(DragDropEffects effect, RawInputModifiers modifiers)
+            {
+                if (effect is DragDropEffects.Copy or DragDropEffects.Move or DragDropEffects.None)
+                    return effect; // No need to check for the modifiers.
+                if (effect.HasAllFlags(DragDropEffects.Copy) && modifiers.HasAllFlags(RawInputModifiers.Control))
+                    return DragDropEffects.Copy;
+                return DragDropEffects.Move;
+            }
         }
 
-        public class WlDataSourceHandler : WlDataSource.IEvents
+        private sealed class WlDataSourceHandler : WlDataSource.IEvents
         {
+            private readonly AvaloniaWaylandPlatform _platform;
             private readonly WlDataSource _wlDataSource;
+            private readonly IDataObject _dataObject;
 
-            private WlDataDeviceManager.DndActionEnum _dndAction;
+            private WlDataDeviceManager.DndActionEnum _lastDnDAction;
 
-            public WlDataSourceHandler(WlDataSource wlDataSource)
+            public WlDataSourceHandler(AvaloniaWaylandPlatform platform, WlDataSource wlDataSource, IDataObject dataObject)
             {
+                _platform = platform;
                 _wlDataSource = wlDataSource;
+                _wlDataSource.Events = this;
+                _dataObject = dataObject;
+                foreach (var format in dataObject.GetDataFormats())
+                {
+                    switch (format)
+                    {
+                        case DataFormats.Text:
+                            _wlDataSource.Offer(MimeTypes.Text);
+                            _wlDataSource.Offer(MimeTypes.TextUtf8);
+                            break;
+                        case DataFormats.FileNames:
+                            _wlDataSource.Offer(MimeTypes.UriList);
+                            break;
+                    }
+                }
             }
 
-            public string? Text { get; set; }
-
-            public IEnumerable<string>? Uris { get; set; }
-
-            public IDataObject? DataObject { get; set; }
+            public WlDataSourceHandler(AvaloniaWaylandPlatform platform, WlDataSource wlDataSource, IDataObject dataObject, DragDropEffects allowedEffects) : this(platform, wlDataSource, dataObject)
+            {
+                var actions = WlDataDeviceManager.DndActionEnum.None;
+                if (allowedEffects.HasAllFlags(DragDropEffects.Copy))
+                    actions |= WlDataDeviceManager.DndActionEnum.Copy;
+                if (allowedEffects.HasAllFlags(DragDropEffects.Move))
+                    actions |= WlDataDeviceManager.DndActionEnum.Move;
+                wlDataSource.SetActions(actions);
+            }
 
             private TaskCompletionSource<DragDropEffects>? _dnd;
-            public Task<DragDropEffects> DnD => _dnd?.Task ?? (_dnd = new TaskCompletionSource<DragDropEffects>()).Task;
+            internal Task<DragDropEffects> DnD => _dnd?.Task ?? (_dnd = new TaskCompletionSource<DragDropEffects>()).Task;
 
-            public void OnTarget(WlDataSource eventSender, string mimeType) { }
+            public void OnTarget(WlDataSource eventSender, string? mimeType) { }
 
             public unsafe void OnSend(WlDataSource eventSender, string mimeType, int fd)
             {
                 var content = mimeType switch
                 {
-                    MimeTypes.Text or MimeTypes.TextUtf8 when Text is not null => Encoding.UTF8.GetBytes(Text),
-                    MimeTypes.UriList when Uris is not null => Uris.SelectMany(static x => Encoding.UTF8.GetBytes(x).Append((byte)'\n')).ToArray(),
-                    _ when DataObject?.Get(mimeType) is byte[] data => data,
+                    MimeTypes.Text or MimeTypes.TextUtf8 when _dataObject.GetText() is { } text => ToBytes(text),
+                    MimeTypes.UriList when _dataObject.GetFileNames() is { } uris => ToBytes(uris),
                     _ => null
                 };
 
@@ -228,21 +248,31 @@ namespace Avalonia.Wayland
                 LibC.close(fd);
             }
 
-            public void OnCancelled(WlDataSource eventSender) => _wlDataSource.Dispose();
-
-            public void OnDndDropPerformed(WlDataSource eventSender)
+            public void OnCancelled(WlDataSource eventSender)
             {
-                if (_dndAction == WlDataDeviceManager.DndActionEnum.Ask)
-                    _wlDataSource.Dispose();
+                _wlDataSource.Dispose();
+                _dnd?.TrySetResult(DragDropEffects.None);
             }
 
-            public void OnDndFinished(WlDataSource eventSender)
+            public void OnDndDropPerformed(WlDataSource eventSender) => _dnd?.TrySetResult((DragDropEffects)_lastDnDAction);
+
+            public void OnDndFinished(WlDataSource eventSender) => _wlDataSource.Dispose();
+
+            public void OnAction(WlDataSource eventSender, WlDataDeviceManager.DndActionEnum dndAction)
             {
-                var finalAction = (DragDropEffects)_dndAction;
-                _dnd!.TrySetResult(finalAction);
+                _lastDnDAction = dndAction;
+                var cursorFactory = AvaloniaLocator.Current.GetRequiredService<ICursorFactory>();
+                ICursorImpl? cursor = null;
+                if (dndAction.HasAllFlags(WlDataDeviceManager.DndActionEnum.Copy))
+                    cursor = cursorFactory.GetCursor(StandardCursorType.DragCopy);
+                else if (dndAction.HasAllFlags(WlDataDeviceManager.DndActionEnum.Move))
+                    cursor = cursorFactory.GetCursor(StandardCursorType.DragMove);
+                _platform.WlInputDevice.SetCursor(cursor as WlCursor);
             }
 
-            public void OnAction(WlDataSource eventSender, WlDataDeviceManager.DndActionEnum dndAction) => _dndAction = dndAction;
+            private static byte[] ToBytes(string text) => Encoding.UTF8.GetBytes(text);
+
+            private static byte[] ToBytes(IEnumerable<string> uris) => uris.SelectMany(static x => Encoding.UTF8.GetBytes(x).Append((byte)'\n')).ToArray();
         }
     }
 }

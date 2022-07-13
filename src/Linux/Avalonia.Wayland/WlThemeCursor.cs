@@ -22,8 +22,8 @@ namespace Avalonia.Wayland
                 if (cachedImage is not null)
                     return cachedImage;
                 var image = _wlCursor->images[index];
-                var rawBuffer = LibWaylandCursor.wl_cursor_image_get_buffer(image);
-                var wlBuffer = new WlBuffer(rawBuffer, WlBuffer.InterfaceVersion);
+                var bufferPtr = LibWaylandCursor.wl_cursor_image_get_buffer(image);
+                var wlBuffer = new WlBuffer(bufferPtr, WlBuffer.InterfaceVersion);
                 var size = new PixelSize((int)image->width, (int)image->height);
                 var hotspot = new PixelPoint((int)image->hotspot_x, (int)image->hotspot_y);
                 var delay = TimeSpan.FromMilliseconds(image->delay);

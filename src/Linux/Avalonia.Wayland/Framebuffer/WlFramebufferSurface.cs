@@ -78,7 +78,7 @@ namespace Avalonia.Wayland.Framebuffer
                     if (fd == -1)
                         throw new NWaylandException("Failed to create FrameBuffer");
                     _data = LibC.mmap(IntPtr.Zero, new IntPtr(size), MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, fd, IntPtr.Zero);
-                    var wlShmPool = _platform.WlShm.CreatePool(fd, size);
+                    using var wlShmPool = _platform.WlShm.CreatePool(fd, size);
                     _wlBuffer = wlShmPool.CreateBuffer(0, width, height, stride, WlShm.FormatEnum.Argb8888);
                     _wlBuffer.Events = this;
                     _size = size;
