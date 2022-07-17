@@ -17,7 +17,7 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal class AvaloniaWaylandPlatform : IWindowingPlatform
+    internal class AvaloniaWaylandPlatform : IWindowingPlatform, XdgWmBase.IEvents
     {
         public AvaloniaWaylandPlatform(WaylandPlatformOptions options)
         {
@@ -35,6 +35,8 @@ namespace Avalonia.Wayland
             ZxdgDecorationManager = WlRegistryHandler.BindRequiredInterface(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             ZwpTextInput = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
+
+            XdgWmBase.Events = this;
 
             var wlDataHandler = new WlDataHandler(this);
             AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
@@ -94,7 +96,7 @@ namespace Avalonia.Wayland
 
         internal WlInputDevice WlInputDevice { get; }
 
-        public IWindowImpl CreateWindow() => new WlWindow(this, null);
+        public IWindowImpl CreateWindow() => new WlToplevel(this);
 
         public IWindowImpl CreateEmbeddableWindow() => throw new NotSupportedException();
 
@@ -103,6 +105,8 @@ namespace Avalonia.Wayland
             // TODO
             return null;
         }
+
+        public void OnPing(XdgWmBase eventSender, uint serial) => XdgWmBase.Pong(serial);
 
         public void Dispose()
         {

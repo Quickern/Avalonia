@@ -84,6 +84,12 @@ namespace Avalonia.Wayland
         {
             private int _x, _y, _width, _height;
 
+            public WlScreen(WlOutput wlOutput)
+            {
+                WlOutput = wlOutput;
+                wlOutput.Events = this;
+            }
+
             public double PixelDensity { get; private set; }
 
             public PixelRect Bounds => PixelRect.FromRect(new Rect(_x, _y, _width, _height), PixelDensity);
@@ -91,12 +97,6 @@ namespace Avalonia.Wayland
             public PixelRect WorkingArea => Bounds;
 
             public WlOutput WlOutput { get; }
-
-            public WlScreen(WlOutput wlOutput)
-            {
-                WlOutput = wlOutput;
-                wlOutput.Events = this;
-            }
 
             public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform)
             {
