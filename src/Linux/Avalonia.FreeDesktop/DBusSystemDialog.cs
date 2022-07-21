@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Logging;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Platform.Storage.FileIO;
 
@@ -14,33 +15,35 @@ namespace Avalonia.FreeDesktop
 {
     internal class DBusSystemDialog : BclStorageProvider
     {
-        private static readonly Lazy<IFileChooser?> s_fileChooser = new(() =>
-        {
-            var fileChooser = DBusHelper.Connection?.CreateProxy<IFileChooser>("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop");
-            if (fileChooser is null)
-                return null;
-            try
-            {
-                _ = fileChooser.GetVersionAsync();
-                return fileChooser;
-            }
-            catch (Exception e)
-            {
-                Logger.TryGet(LogEventLevel.Error, LogArea.X11Platform)?.Log(null, $"Unable to connect to org.freedesktop.portal.Desktop: {e.Message}");
-                return null;
-            }
-        });
+        private static readonly Lazy<IFileChooser?> s_fileChooser = new(() => DBusHelper.Connection?
+            .CreateProxy<IFileChooser>("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop"));
 
-        internal static DBusSystemDialog? TryCreate(string parentWindowHandle) =>
-            s_fileChooser.Value is { } fileChooser ? new DBusSystemDialog(fileChooser, parentWindowHandle) : null;
+        internal static async Task<IStorageProvider?> TryCreate(string parentWindowIdentifier)
+        {
+            if (s_fileChooser.Value is { } fileChooser)
+            {
+                try
+                {
+                    await fileChooser.GetVersionAsync();
+                    return new DBusSystemDialog(fileChooser, parentWindowIdentifier);
+                }
+                catch (Exception e)
+                {
+                    Logger.TryGet(LogEventLevel.Error, LogArea.X11Platform)?.Log(null, $"Unable to connect to org.freedesktop.portal.Desktop: {e.Message}");
+                    return null;
+                }
+            }
+
+            return null;
+        }
 
         private readonly IFileChooser _fileChooser;
-        private readonly string _parentWindowHandle;
+        private readonly string _parentWindowIdentifier;
 
-        private DBusSystemDialog(IFileChooser fileChooser, string parentWindowHandle)
+        private DBusSystemDialog(IFileChooser fileChooser, string parentWindowIdentifier)
         {
             _fileChooser = fileChooser;
-            _parentWindowHandle = parentWindowHandle;
+            _parentWindowIdentifier = parentWindowIdentifier;
         }
 
         public override bool CanOpen => true;
@@ -59,7 +62,7 @@ namespace Avalonia.FreeDesktop
 
             chooserOptions.Add("multiple", options.AllowMultiple);
 
-            objectPath = await _fileChooser.OpenFileAsync(_parentWindowHandle, options.Title ?? string.Empty, chooserOptions);
+            objectPath = await _fileChooser.OpenFileAsync(_parentWindowIdentifier, options.Title ?? string.Empty, chooserOptions);
 
             var request = DBusHelper.Connection!.CreateProxy<IRequest>("org.freedesktop.portal.Request", objectPath);
             var tsc = new TaskCompletionSource<string[]?>();
@@ -81,7 +84,7 @@ namespace Avalonia.FreeDesktop
                 chooserOptions.Add("current_name", currentName);
             if (options.SuggestedStartLocation?.TryGetUri(out var currentFolder) == true)
                 chooserOptions.Add("current_folder", Encoding.UTF8.GetBytes(currentFolder.ToString()));
-            objectPath = await _fileChooser.SaveFileAsync(_parentWindowHandle, options.Title ?? string.Empty, chooserOptions);
+            objectPath = await _fileChooser.SaveFileAsync(_parentWindowIdentifier, options.Title ?? string.Empty, chooserOptions);
 
             var request = DBusHelper.Connection!.CreateProxy<IRequest>("org.freedesktop.portal.Request", objectPath);
             var tsc = new TaskCompletionSource<string[]?>();
@@ -104,7 +107,7 @@ namespace Avalonia.FreeDesktop
                 { "directory", true },
                 { "multiple", options.AllowMultiple }
             };
-            var objectPath = await _fileChooser.OpenFileAsync(_parentWindowHandle, options.Title ?? string.Empty, chooserOptions);
+            var objectPath = await _fileChooser.OpenFileAsync(_parentWindowIdentifier, options.Title ?? string.Empty, chooserOptions);
             var request = DBusHelper.Connection!.CreateProxy<IRequest>("org.freedesktop.portal.Request", objectPath);
             var tsc = new TaskCompletionSource<string[]?>();
             using var disposable = await request.WatchResponseAsync(x => tsc.SetResult(x.results["uris"] as string[]), tsc.SetException);
@@ -132,7 +135,7 @@ namespace Avalonia.FreeDesktop
 
                 var extensions = Enumerable.Empty<(uint, string)>();
 
-                if (fileType.Patterns is { } patterns) 
+                if (fileType.Patterns is { } patterns)
                     extensions = extensions.Concat(patterns.Select(static x => (globStyle, x)));
                 else if (fileType.MimeTypes is { } mimeTypes)
                     extensions = extensions.Concat(mimeTypes.Select(static x => (mimeStyle, x)));
