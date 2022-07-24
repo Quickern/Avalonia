@@ -151,11 +151,6 @@ namespace Avalonia.Platform
         /// </summary>
         Action? LostFocus { get; set; }
 
-        /// <summary>
-        /// Gets a mouse device associated with toplevel
-        /// </summary>
-        IMouseDevice? MouseDevice { get; }
-
         IPopupImpl? CreatePopup();
 
         /// <summary>
