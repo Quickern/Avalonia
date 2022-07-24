@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.FreeDesktop;
@@ -26,9 +27,10 @@ namespace Avalonia.Wayland
             _platform = platform;
             _xdgToplevel = XdgSurface.GetToplevel();
             _xdgToplevel.Events = this;
+            if (platform.Options.AppId is not null)
+                _xdgToplevel.SetAppId(platform.Options.AppId);
             _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
             _toplevelDecoration.Events = this;
-
             _exported = platform.ZxdgExporter?.ExportToplevel(WlSurface);
             if (_exported is not null)
                 _exported.Events = this;
@@ -84,8 +86,10 @@ namespace Avalonia.Wayland
 
         public void SetParent(IWindowImpl parent)
         {
-            if (parent is WlToplevel wlToplevel)
-                _xdgToplevel.SetParent(wlToplevel._xdgToplevel);
+            if (parent is not WlToplevel wlToplevel)
+                return;
+            _xdgToplevel.SetParent(wlToplevel._xdgToplevel);
+            Parent = wlToplevel;
         }
 
         public void SetEnabled(bool enable) { }
@@ -202,7 +206,13 @@ namespace Avalonia.Wayland
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
 
-        public void OnHandle(ZxdgExportedV2 eventSender, string handle) => StorageProvider = DBusSystemDialog.TryCreate($"wayland:{handle}")!;
+        public void OnHandle(ZxdgExportedV2 eventSender, string handle)
+        {
+            StorageProvider = new CompositeStorageProvider(new Func<Task<IStorageProvider?>>[]
+            {
+                () => DBusSystemDialog.TryCreate($"wayland:{handle}")
+            });
+        }
 
         public override void Dispose()
         {
@@ -222,7 +232,8 @@ namespace Avalonia.Wayland
             WindowEdge.South => XdgToplevel.ResizeEdgeEnum.Bottom,
             WindowEdge.SouthWest => XdgToplevel.ResizeEdgeEnum.BottomLeft,
             WindowEdge.West => XdgToplevel.ResizeEdgeEnum.Left,
-            WindowEdge.NorthWest => XdgToplevel.ResizeEdgeEnum.TopLeft
+            WindowEdge.NorthWest => XdgToplevel.ResizeEdgeEnum.TopLeft,
+            _ => throw new ArgumentOutOfRangeException(nameof(windowEdge))
         };
     }
 }

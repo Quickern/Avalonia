@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Avalonia.Platform;
 using NWayland.Protocols.Wayland;
 
@@ -12,6 +11,7 @@ namespace Avalonia.Wayland
         private readonly Dictionary<uint, WlScreen> _wlScreens = new();
         private readonly Dictionary<WlOutput, WlScreen> _wlOutputs = new();
         private readonly Dictionary<WlSurface, WlWindow> _wlWindows = new();
+        private readonly List<WlScreen> _allScreens = new();
 
         public WlScreens(AvaloniaWaylandPlatform platform)
         {
@@ -20,9 +20,9 @@ namespace Avalonia.Wayland
             _platform.WlRegistryHandler.GlobalRemoved += OnGlobalRemoved;
         }
 
-        public int ScreenCount => _wlScreens.Count;
+        public int ScreenCount => _allScreens.Count;
 
-        public IReadOnlyList<Screen> AllScreens => _wlScreens.Values.Select(ScreenForWlScreen).ToList();
+        public IReadOnlyList<Screen> AllScreens => _allScreens;
 
         public WlWindow? ActiveWindow { get; private set; }
 
@@ -32,8 +32,6 @@ namespace Avalonia.Wayland
 
         public Screen? ScreenFromRect(PixelRect rect) => ScreenHelper.ScreenFromRect(rect, AllScreens);
 
-        public Screen ScreenFromOutput(WlOutput wlOutput) => ScreenForWlScreen(_wlOutputs[wlOutput]);
-
         public void Dispose()
         {
             _platform.WlRegistryHandler.GlobalAdded -= OnGlobalAdded;
@@ -42,18 +40,20 @@ namespace Avalonia.Wayland
                 wlScreen.Dispose();
         }
 
+        internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput];
+
         internal void AddWindow(WlWindow window) => _wlWindows.Add(window.WlSurface, window);
 
         internal void RemoveWindow(WlWindow window)
         {
             _wlWindows.Remove(window.WlSurface);
             if (ActiveWindow == window)
-                ActiveWindow = null;
+                ActiveWindow = window.Parent;
         }
 
-        internal void SetActiveSurface(WlSurface surface)
+        internal void SetActiveSurface(WlSurface? surface)
         {
-            if (_wlWindows.TryGetValue(surface, out var window))
+            if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
                 ActiveWindow = window;
         }
 
@@ -65,6 +65,7 @@ namespace Avalonia.Wayland
             var wlScreen = new WlScreen(wlOutput);
             _wlScreens.Add(globalInfo.Name, wlScreen);
             _wlOutputs.Add(wlOutput, wlScreen);
+            _allScreens.Add(wlScreen);
         }
 
         private void OnGlobalRemoved(WlRegistryHandler.GlobalInfo globalInfo)
@@ -75,45 +76,27 @@ namespace Avalonia.Wayland
                 return;
             _wlScreens.Remove(globalInfo.Name);
             _wlOutputs.Remove(wlScreen.WlOutput);
+            _allScreens.Remove(wlScreen);
             wlScreen.Dispose();
         }
 
-        private static Screen ScreenForWlScreen(WlScreen wlScreen) => new(wlScreen.PixelDensity, wlScreen.Bounds, wlScreen.WorkingArea, false);
-
-        private sealed class WlScreen : WlOutput.IEvents, IDisposable
+        private sealed class WlScreen : Screen, WlOutput.IEvents, IDisposable
         {
-            private int _x, _y, _width, _height;
-
             public WlScreen(WlOutput wlOutput)
             {
                 WlOutput = wlOutput;
                 wlOutput.Events = this;
             }
 
-            public double PixelDensity { get; private set; }
-
-            public PixelRect Bounds => PixelRect.FromRect(new Rect(_x, _y, _width, _height), PixelDensity);
-
-            public PixelRect WorkingArea => Bounds;
-
             public WlOutput WlOutput { get; }
 
             public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform)
-            {
-                _x = x;
-                _y = y;
-            }
+                => Bounds = WorkingArea = new PixelRect(x, y, Bounds.Width, Bounds.Height);
 
             public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
-            {
-                _width = width;
-                _height = height;
-            }
+                => Bounds = WorkingArea = new PixelRect(Bounds.X, Bounds.Y, width, height);
 
-            public void OnScale(WlOutput eventSender, int factor)
-            {
-                PixelDensity = factor;
-            }
+            public void OnScale(WlOutput eventSender, int factor) => PixelDensity = factor;
 
             public void OnName(WlOutput eventSender, string name) { }
 

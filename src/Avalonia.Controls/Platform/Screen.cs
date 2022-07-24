@@ -2,20 +2,22 @@
 {
     public class Screen
     {
-        public double PixelDensity { get; }
+        public double PixelDensity { get; protected set; }
 
-        public PixelRect Bounds { get; }
+        public PixelRect Bounds { get; protected set; }
 
-        public PixelRect WorkingArea { get; }
+        public PixelRect WorkingArea { get; protected set; }
 
-        public bool Primary { get; }
-        
+        public bool Primary { get; protected set; }
+
+        protected Screen() { }
+
         public Screen(double pixelDensity, PixelRect bounds, PixelRect workingArea, bool primary)
         {
-            this.PixelDensity = pixelDensity;
-            this.Bounds = bounds;
-            this.WorkingArea = workingArea;
-            this.Primary = primary;
-        } 
+            PixelDensity = pixelDensity;
+            Bounds = bounds;
+            WorkingArea = workingArea;
+            Primary = primary;
+        }
     }
 }

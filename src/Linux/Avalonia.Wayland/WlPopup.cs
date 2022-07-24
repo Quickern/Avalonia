@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls.Primitives.PopupPositioning;
+using Avalonia.Input.Raw;
 using Avalonia.Platform;
 using NWayland.Protocols.XdgShell;
 
@@ -7,16 +8,17 @@ namespace Avalonia.Wayland
 {
     internal class WlPopup : WlWindow, IPopupImpl, IPopupPositioner, XdgPopup.IEvents, XdgPositioner.IEvents
     {
-        private readonly WlWindow _parent;
+        private readonly AvaloniaWaylandPlatform _platform;
         private readonly XdgPositioner _xdgPositioner;
 
         private XdgPopup? _xdgPopup;
+        private uint _repositionToken;
 
         internal WlPopup(AvaloniaWaylandPlatform platform, WlWindow parent) : base(platform)
         {
-            _parent = parent;
+            _platform = platform;
             _xdgPositioner = platform.XdgWmBase.CreatePositioner();
-            _xdgPositioner.SetReactive();
+            Parent = parent;
         }
 
         public IPopupPositioner PopupPositioner => this;
@@ -27,8 +29,9 @@ namespace Avalonia.Wayland
         {
             if (_xdgPopup is null)
             {
-                _xdgPopup = XdgSurface.GetPopup(_parent.XdgSurface, _xdgPositioner);
+                _xdgPopup = XdgSurface.GetPopup(Parent!.XdgSurface, _xdgPositioner);
                 _xdgPopup.Events = this;
+                _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.Serial);
             }
 
             base.Show(activate, isDialog);
@@ -36,18 +39,17 @@ namespace Avalonia.Wayland
 
         public void Update(PopupPositionerParameters parameters)
         {
+            _xdgPositioner.SetReactive();
             _xdgPositioner.SetAnchor(ParsePopupAnchor(parameters.Anchor));
             _xdgPositioner.SetGravity(ParsePopupGravity(parameters.Gravity));
-            _xdgPositioner.SetOffset((int)parameters.Offset.X, (int)parameters.Offset.Y);
-            var width = Math.Max(1, (int)parameters.Size.Width);
-            var height = Math.Max(1, (int)parameters.Size.Height);
-            _xdgPositioner.SetSize(width, height);
-            var anchorWidth = Math.Max(1, (int)parameters.AnchorRectangle.Width);
-            var anchorHeight = Math.Max(1, (int)parameters.AnchorRectangle.Height);
-            _xdgPositioner.SetAnchorRect((int)parameters.AnchorRectangle.X, (int)parameters.AnchorRectangle.Y, anchorWidth, anchorHeight);
+            _xdgPositioner.SetOffset((int)Math.Ceiling(parameters.Offset.X), (int)Math.Ceiling(parameters.Offset.Y));
+            _xdgPositioner.SetSize((int)Math.Ceiling(parameters.Size.Width), (int)Math.Ceiling(parameters.Size.Height));
+            _xdgPositioner.SetAnchorRect((int)Math.Ceiling(parameters.AnchorRectangle.X), (int)Math.Ceiling(parameters.AnchorRectangle.Y), (int)Math.Ceiling(parameters.AnchorRectangle.Width), (int)Math.Ceiling(parameters.AnchorRectangle.Height));
             _xdgPositioner.SetConstraintAdjustment((uint)(XdgPositioner.ConstraintAdjustmentEnum)parameters.ConstraintAdjustment);
-            _xdgPositioner.SetParentConfigure(_parent.XdgSurfaceConfigureSerial);
-            _xdgPopup?.Reposition(_xdgPositioner, _parent.XdgSurfaceConfigureSerial);
+            if (_xdgPopup is null || XdgSurfaceConfigureSerial == 0)
+                return;
+            _xdgPositioner.SetParentConfigure(Parent!.XdgSurfaceConfigureSerial);
+            _xdgPopup.Reposition(_xdgPositioner, ++_repositionToken);
         }
 
         public void OnConfigure(XdgPopup eventSender, int x, int y, int width, int height)
@@ -60,7 +62,13 @@ namespace Avalonia.Wayland
             PositionChanged?.Invoke(Position);
         }
 
-        public void OnPopupDone(XdgPopup eventSender) => Dispose();
+        public void OnPopupDone(XdgPopup eventSender)
+        {
+            if (_platform.WlInputDevice.MouseDevice is null || InputRoot is null)
+                return;
+            var args = new RawPointerEventArgs(_platform.WlInputDevice.MouseDevice, 0, InputRoot, RawPointerEventType.NonClientLeftButtonDown, new Point(), _platform.WlInputDevice.RawInputModifiers);
+            Input?.Invoke(args);
+        }
 
         public void OnRepositioned(XdgPopup eventSender, uint token) { }
 
@@ -69,7 +77,6 @@ namespace Avalonia.Wayland
             Closed?.Invoke();
             _xdgPositioner.Dispose();
             _xdgPopup?.Dispose();
-            _xdgPopup = null;
             base.Dispose();
         }
 

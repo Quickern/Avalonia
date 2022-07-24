@@ -446,10 +446,14 @@ namespace Avalonia.Controls.Primitives
                 SubscribeToEventHandler<Window, EventHandler>(window, WindowDeactivated,
                     (x, handler) => x.Deactivated += handler,
                     (x, handler) => x.Deactivated -= handler).DisposeWith(handlerCleanup);
-                
+
                 SubscribeToEventHandler<IWindowImpl, Action>(window.PlatformImpl, WindowLostFocus,
                     (x, handler) => x.LostFocus += handler,
                     (x, handler) => x.LostFocus -= handler).DisposeWith(handlerCleanup);
+
+                SubscribeToEventHandler<IWindowImpl, Action>(window.PlatformImpl, Close,
+                    (x, handler) => x.Closed += handler,
+                    (x, handler) => x.Closed -= handler).DisposeWith(handlerCleanup);
 
                 // Recalculate popup position on parent moved/resized, but not if placement was on pointer
                 if (PlacementMode != PlacementMode.Pointer)

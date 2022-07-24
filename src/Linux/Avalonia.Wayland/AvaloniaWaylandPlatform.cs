@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.FreeDesktop;
@@ -8,6 +9,7 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
+using Avalonia.Rendering.Composition;
 using Avalonia.Wayland;
 using NWayland.Protocols.TextInputUnstableV3;
 using NWayland.Protocols.Wayland;
@@ -41,12 +43,8 @@ namespace Avalonia.Wayland
             var wlDataHandler = new WlDataHandler(this);
             AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
                 .Bind<IPlatformThreadingInterface>().ToConstant(new WlPlatformThreading(this))
-                // ---
-                // TODO: Compatibility with animations for now, Clocks should be tied to the control's toplevel
-                // Reason: We use Wayland's FrameCallbacks as a render loop, which are variably send by the compositor.
                 .Bind<IRenderTimer>().ToConstant(new DefaultRenderTimer(60))
                 .Bind<IRenderLoop>().ToConstant(new RenderLoop())
-                // ---
                 .Bind<PlatformHotkeyConfiguration>().ToConstant(new PlatformHotkeyConfiguration(KeyModifiers.Control))
                 .Bind<IKeyboardDevice>().ToConstant(new KeyboardDevice())
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
@@ -61,16 +59,22 @@ namespace Avalonia.Wayland
 
             DBusHelper.TryInitialize();
 
+            IPlatformOpenGlInterface? gl = null;
             if (options.UseGpu)
             {
                 const int EGL_PLATFORM_WAYLAND_KHR = 0x31D8;
-                var egl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
-                if (egl is not null)
-                    AvaloniaLocator.CurrentMutable.Bind<IPlatformOpenGlInterface>().ToConstant(egl);
+                gl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
+                if (gl is not null)
+                    AvaloniaLocator.CurrentMutable.Bind<IPlatformOpenGlInterface>().ToConstant(gl).Bind<IPlatformGpu>().ToConstant(gl);
             }
+
+            if (options.UseCompositor)
+                Compositor = new Compositor(AvaloniaLocator.Current.GetRequiredService<IRenderLoop>(), gl);
         }
 
         internal WaylandPlatformOptions Options { get; }
+
+        internal Compositor? Compositor { get; }
 
         internal WlDisplay WlDisplay { get; }
 
@@ -146,6 +150,8 @@ namespace Avalonia
         /// </summary>
         public bool UseGpu { get; set; } = true;
 
+        public bool UseCompositor { get; set; } = true;
+
         /// <summary>
         /// Deferred renderer would be used when set to true. Immediate renderer when set to false. The default value is true.
         /// </summary>
@@ -154,5 +160,11 @@ namespace Avalonia
         /// Immediate re-renders the whole scene when some element is changed on the scene. Deferred re-renders only changed elements.
         /// </remarks>
         public bool UseDeferredRendering { get; set; } = true;
+
+        /// <summary>
+        /// The app ID identifies the general class of applications to which the surface belongs.
+        /// The compositor can use this to group multiple surfaces together, or to determine how to launch a new application.
+        /// </summary>
+        public string? AppId { get; set; } = Assembly.GetEntryAssembly()?.GetName().Name;
     }
 }

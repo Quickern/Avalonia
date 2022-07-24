@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
@@ -7,7 +8,7 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
-using Avalonia.Threading;
+using Avalonia.Rendering.Composition;
 using Avalonia.Utilities;
 using Avalonia.Wayland.Egl;
 using Avalonia.Wayland.Framebuffer;
@@ -16,17 +17,11 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, IRenderTimer, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
         private readonly IntPtr _eglWindow;
-
-        private uint _lastTick;
-        private PixelSize _pendingSize;
-        private WlCallback? _wlCallback;
-
-        public event Action<TimeSpan>? Tick;
 
         protected WlWindow(AvaloniaWaylandPlatform platform)
         {
@@ -42,6 +37,7 @@ namespace Avalonia.Wayland
             ClientSize = screens.Count > 0
                 ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
                 : new Size(400, 600);
+            Resized?.Invoke(ClientSize, PlatformResizeReason.Layout);
 
             _wlFramebufferSurface = new WlFramebufferSurface(platform, this, WlSurface);
             var surfaces = new List<object> { _wlFramebufferSurface };
@@ -60,7 +56,7 @@ namespace Avalonia.Wayland
 
         public IPlatformHandle Handle { get; }
 
-        public Size MaxAutoSizeHint => WlOutput is null ? Size.Empty : _platform.WlScreens.ScreenFromOutput(WlOutput).Bounds.Size.ToSize(RenderScaling);//_platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.PixelDensity)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
+        public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.PixelDensity)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
 
         public Size ClientSize { get; private set; }
 
@@ -104,6 +100,8 @@ namespace Avalonia.Wayland
 
         internal IInputRoot? InputRoot { get; private set; }
 
+        internal WlWindow? Parent { get; set; }
+
         internal WlSurface WlSurface { get; }
 
         internal XdgSurface XdgSurface { get; }
@@ -112,17 +110,20 @@ namespace Avalonia.Wayland
 
         protected WlOutput? WlOutput { get; private set; }
 
-        protected ref PixelSize PendingSize => ref _pendingSize;
+        protected PixelSize PendingSize { get; set; }
 
         public IRenderer CreateRenderer(IRenderRoot root)
         {
-            var loop = new RenderLoop(this, Dispatcher.UIThread);
+            var loop = AvaloniaLocator.Current.GetRequiredService<IRenderLoop>();
             var customRendererFactory = AvaloniaLocator.Current.GetService<IRendererFactory>();
 
             if (customRendererFactory is not null)
                 return customRendererFactory.Create(root, loop);
-
-            return _platform.Options.UseDeferredRendering ? new DeferredRenderer(root, loop) : new ImmediateRenderer(root);
+            if (_platform.Options.UseCompositor)
+                return new CompositingRenderer(root, _platform.Compositor!);
+            if (_platform.Options.UseDeferredRendering)
+                return new DeferredRenderer(root, loop) { RenderOnlyOnRenderThread = true };
+            return new ImmediateRenderer(root);
         }
 
         public void Invalidate(Rect rect) => WlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)(rect.Width * RenderScaling), (int)(rect.Height * RenderScaling));
@@ -147,7 +148,7 @@ namespace Avalonia.Wayland
 
         public virtual void Show(bool activate, bool isDialog)
         {
-            RequestFrame();
+            WlSurface.Frame().Events = this;
             Paint?.Invoke(Rect.Empty);
         }
 
@@ -161,11 +162,7 @@ namespace Avalonia.Wayland
 
         public void SetTopmost(bool value) { }
 
-        public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
-        {
-            if (clientSize != ClientSize)
-                _pendingSize = new PixelSize((int)clientSize.Width, (int)clientSize.Height);
-        }
+        public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application) => PendingSize = new PixelSize((int)clientSize.Width, (int)clientSize.Height);
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
         {
@@ -182,25 +179,23 @@ namespace Avalonia.Wayland
 
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
-            Tick?.Invoke(TimeSpan.FromMilliseconds(callbackData - _lastTick));
-            _wlCallback!.Dispose();
-            _wlCallback = null;
-            RequestFrame();
-            Paint?.Invoke(Rect.Empty);
-            WlSurface.Commit();
-            _lastTick = callbackData;
+            /*eventSender.Dispose();
+            _receivedFrameCallback = true;
+            WlSurface.Frame().Events = this;
+            WlSurface.Commit();*/
         }
 
         public void OnConfigure(XdgSurface eventSender, uint serial)
         {
             XdgSurfaceConfigureSerial = serial;
-            var pendingSize = new Size(_pendingSize.Width, _pendingSize.Height);
-            if (_pendingSize != PixelSize.Empty && pendingSize != ClientSize)
+            var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
+            if (PendingSize != PixelSize.Empty && pendingSize != ClientSize)
             {
                 ClientSize = pendingSize;
                 if (_eglWindow != IntPtr.Zero)
-                    LibWaylandEgl.wl_egl_window_resize(_eglWindow, _pendingSize.Width, _pendingSize.Height, 0, 0);
+                    LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
                 Resized?.Invoke(ClientSize, PlatformResizeReason.User);
+                Paint?.Invoke(new Rect(ClientSize));
             }
 
             XdgSurface.AckConfigure(serial);
@@ -208,24 +203,12 @@ namespace Avalonia.Wayland
 
         public virtual void Dispose()
         {
-            Console.WriteLine($"Disposing base window of type {GetType().Name}");
             _platform.WlScreens.RemoveWindow(this);
-            _wlCallback?.Dispose();
-            _wlCallback = null;
-            XdgSurface.Dispose();
-            _wlFramebufferSurface.Dispose();
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
+            _wlFramebufferSurface.Dispose();
+            XdgSurface.Dispose();
             WlSurface.Dispose();
-        }
-
-        internal void RequestFrame()
-        {
-            if (_wlCallback is not null)
-                return;
-            _wlCallback = WlSurface.Frame();
-            if (_wlCallback is not null)
-                _wlCallback.Events = this;
         }
     }
 }
