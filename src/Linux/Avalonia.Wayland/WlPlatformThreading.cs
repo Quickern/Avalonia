@@ -60,7 +60,7 @@ namespace Avalonia.Wayland
                 }
 
                 var nextTick = DispatchTimers(cancellationToken);
-                var timeout = nextTick == TimeSpan.MinValue ? -1 : Math.Max(-1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
+                var timeout = nextTick == TimeSpan.MinValue ? -1 : Math.Max(1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
                 var ret = LibC.poll(&pollFd, new IntPtr(1), timeout);
 
                 if (cancellationToken.IsCancellationRequested)

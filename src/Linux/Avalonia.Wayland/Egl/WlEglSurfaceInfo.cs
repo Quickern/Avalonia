@@ -5,18 +5,18 @@ namespace Avalonia.Wayland.Egl
 {
     internal class WlEglSurfaceInfo : EglGlPlatformSurfaceBase.IEglWindowGlPlatformSurfaceInfo
     {
-        private readonly WlWindow _wlWindow;
-
         public WlEglSurfaceInfo(WlWindow wlWindow, IntPtr eglWindow)
         {
-            _wlWindow = wlWindow;
+            WlWindow = wlWindow;
             Handle = eglWindow;
         }
 
+        public WlWindow WlWindow { get; }
+
         public IntPtr Handle { get; }
 
-        public PixelSize Size => new((int)_wlWindow.ClientSize.Width, (int)_wlWindow.ClientSize.Height);
+        public PixelSize Size => new((int)WlWindow.ClientSize.Width, (int)WlWindow.ClientSize.Height);
 
-        public double Scaling => _wlWindow.RenderScaling;
+        public double Scaling => WlWindow.RenderScaling;
     }
 }

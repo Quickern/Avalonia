@@ -46,11 +46,11 @@ namespace Avalonia.Wayland
 
         public IStorageProvider StorageProvider { get; private set; }
 
-        public bool IsClientAreaExtendedToDecorations { get; private set; }
+        public bool IsClientAreaExtendedToDecorations => false;
 
-        public bool NeedsManagedDecorations { get; private set; }
+        public bool NeedsManagedDecorations => false;
 
-        public Thickness ExtendedMargins { get; private set; }
+        public Thickness ExtendedMargins => default;
 
         public Thickness OffScreenMargin => default;
 
@@ -154,8 +154,7 @@ namespace Avalonia.Wayland
             _xdgToplevel.SetMaxSize(maxX, maxY);
         }
 
-        public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) =>
-            _toplevelDecoration.SetMode(extendIntoClientAreaHint ? ZxdgToplevelDecorationV1.ModeEnum.ClientSide : ZxdgToplevelDecorationV1.ModeEnum.ServerSide);
+        public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) { }
 
         public void SetExtendClientAreaChromeHints(ExtendClientAreaChromeHints hints) { }
 
@@ -195,16 +194,7 @@ namespace Avalonia.Wayland
 
         public void OnWmCapabilities(XdgToplevel eventSender, ReadOnlySpan<XdgToplevel.WmCapabilitiesEnum> capabilities) { }
 
-        public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)
-        {
-            var isExtended = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
-            if (isExtended == IsClientAreaExtendedToDecorations)
-                return;
-            ExtendedMargins = isExtended ? new Thickness(0, 25, 0, 0) : default;
-            IsClientAreaExtendedToDecorations = isExtended;
-            NeedsManagedDecorations = isExtended;
-            ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
-        }
+        public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode) { }
 
         public void OnHandle(ZxdgExportedV2 eventSender, string handle)
         {
