@@ -6,13 +6,13 @@ using Avalonia.SourceGenerator;
 
 namespace Avalonia.OpenGL.Egl
 {
-    public unsafe partial class EglInterface
+    public partial class EglInterface
     {
         public EglInterface(Func<string, IntPtr> getProcAddress)
         {
             Initialize(getProcAddress);
         }
-        
+
         public EglInterface(string library) : this(Load(library))
         {
         }
@@ -47,16 +47,16 @@ namespace Avalonia.OpenGL.Egl
         [GetProcAddress("eglGetDisplay")]
         public partial IntPtr GetDisplay(IntPtr nativeDisplay);
 
-        [GetProcAddress("eglGetPlatformDisplay")]
+        [GetProcAddress("eglGetPlatformDisplay", true)]
         public partial IntPtr GetPlatformDisplay(int platform, IntPtr nativeDisplay, int[] attrs);
 
         [GetProcAddress("eglGetPlatformDisplayEXT", true)]
         public partial IntPtr GetPlatformDisplayExt(int platform, IntPtr nativeDisplay, int[] attrs);
 
-        [GetProcAddress("eglInitialize")]        
+        [GetProcAddress("eglInitialize")]
         public partial bool Initialize(IntPtr display, out int major, out int minor);
 
-        [GetProcAddress("eglGetProcAddress")]        
+        [GetProcAddress("eglGetProcAddress")]
         public partial IntPtr GetProcAddress(IntPtr proc);
 
         [GetProcAddress("eglBindAPI")]
@@ -85,7 +85,7 @@ namespace Avalonia.OpenGL.Egl
         [GetProcAddress("eglGetCurrentDisplay")]
         public partial IntPtr GetCurrentDisplay();
 
-        [GetProcAddress("eglGetCurrentSurface")] 
+        [GetProcAddress("eglGetCurrentSurface")]
         public partial IntPtr GetCurrentSurface(int readDraw);
 
         [GetProcAddress("eglDestroySurface")]
@@ -99,19 +99,19 @@ namespace Avalonia.OpenGL.Egl
 
         [GetProcAddress("eglGetConfigAttrib")]
         public partial bool GetConfigAttrib(IntPtr display, IntPtr config, int attr, out int rv);
-        
+
         [GetProcAddress("eglWaitGL")]
         public partial bool WaitGL();
-        
+
         [GetProcAddress("eglWaitClient")]
         public partial bool WaitClient();
-        
+
         [GetProcAddress("eglWaitNative")]
         public partial bool WaitNative(int engine);
-        
+
         [GetProcAddress("eglQueryString")]
         public partial IntPtr QueryStringNative(IntPtr display, int i);
-        
+
         public string QueryString(IntPtr display, int i)
         {
             var rv = QueryStringNative(display, i);
@@ -119,14 +119,13 @@ namespace Avalonia.OpenGL.Egl
                 return null;
             return Marshal.PtrToStringAnsi(rv);
         }
-        
+
         [GetProcAddress("eglCreatePbufferFromClientBuffer")]
         public partial IntPtr CreatePbufferFromClientBuffer(IntPtr display, int buftype, IntPtr buffer, IntPtr config, int[] attrib_list);
-        
+
         [GetProcAddress("eglQueryDisplayAttribEXT", true)]
         public partial bool QueryDisplayAttribExt(IntPtr display, int attr, out IntPtr res);
 
-        
         [GetProcAddress("eglQueryDeviceAttribEXT", true)]
         public partial bool QueryDeviceAttribExt(IntPtr display, int attr, out IntPtr res);
     }
