@@ -43,7 +43,6 @@ namespace Avalonia.Wayland
             ClientSize = screens.Count > 0
                 ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
                 : new Size(400, 600);
-            Resized?.Invoke(ClientSize, PlatformResizeReason.Layout);
 
             _wlFramebufferSurface = new WlFramebufferSurface(platform, this, WlSurface);
             var surfaces = new List<object> { _wlFramebufferSurface };
@@ -168,7 +167,19 @@ namespace Avalonia.Wayland
 
         public void SetTopmost(bool value) { }
 
-        public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application) => PendingSize = new PixelSize((int)clientSize.Width, (int)clientSize.Height);
+        public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
+        {
+            PendingSize = new PixelSize((int)clientSize.Width, (int)clientSize.Height);
+            if (XdgSurfaceConfigureSerial != 0)
+                return;
+            var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
+            if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
+                return;
+            ClientSize = pendingSize;
+            if (_eglWindow != IntPtr.Zero)
+                LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
+            Resized?.Invoke(ClientSize, reason);
+        }
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
         {

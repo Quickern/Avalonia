@@ -39,11 +39,12 @@ namespace Avalonia.Wayland
 
         public void Update(PopupPositionerParameters parameters)
         {
+            Resize(parameters.Size);
             _xdgPositioner.SetReactive();
             _xdgPositioner.SetAnchor(ParsePopupAnchor(parameters.Anchor));
             _xdgPositioner.SetGravity(ParsePopupGravity(parameters.Gravity));
-            _xdgPositioner.SetOffset((int)Math.Ceiling(parameters.Offset.X), (int)Math.Ceiling(parameters.Offset.Y));
-            _xdgPositioner.SetSize((int)Math.Ceiling(parameters.Size.Width), (int)Math.Ceiling(parameters.Size.Height));
+            _xdgPositioner.SetOffset((int)parameters.Offset.X, (int)parameters.Offset.Y);
+            _xdgPositioner.SetSize((int)parameters.Size.Width, (int)parameters.Size.Height);
             _xdgPositioner.SetAnchorRect((int)Math.Ceiling(parameters.AnchorRectangle.X), (int)Math.Ceiling(parameters.AnchorRectangle.Y), (int)Math.Ceiling(parameters.AnchorRectangle.Width), (int)Math.Ceiling(parameters.AnchorRectangle.Height));
             _xdgPositioner.SetConstraintAdjustment((uint)(XdgPositioner.ConstraintAdjustmentEnum)parameters.ConstraintAdjustment);
             if (_xdgPopup is null || XdgSurfaceConfigureSerial == 0)
