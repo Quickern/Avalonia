@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
+using Avalonia.Input.TextInput;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
@@ -17,7 +19,7 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
@@ -34,6 +36,8 @@ namespace Avalonia.Wayland
             XdgSurface.Events = this;
 
             platform.WlScreens.AddWindow(this);
+
+            TextInputMethod = platform.WlTextInputMethod;
 
             var screens = _platform.WlScreens.AllScreens;
             ClientSize = screens.Count > 0
@@ -57,6 +61,8 @@ namespace Avalonia.Wayland
         }
 
         public IPlatformHandle Handle { get; }
+
+        public ITextInputMethodImpl? TextInputMethod { get; }
 
         public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.PixelDensity)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
 

@@ -6,11 +6,12 @@ using Avalonia.Input.Raw;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using NWayland.Interop;
+using NWayland.Protocols.PointerGesturesUnstableV1;
 using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
 {
-    internal class WlInputDevice : WlSeat.IEvents, WlPointer.IEvents, WlKeyboard.IEvents, WlTouch.IEvents, IDisposable
+    internal class WlInputDevice : IDisposable, WlSeat.IEvents, WlPointer.IEvents, WlKeyboard.IEvents, WlTouch.IEvents, ZwpPointerGesturePinchV1.IEvents, ZwpPointerGestureSwipeV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly IPlatformThreadingInterface _platformThreading;
@@ -21,10 +22,16 @@ namespace Avalonia.Wayland
         private WlKeyboard? _wlKeyboard;
         private WlTouch? _wlTouch;
 
+        private ZwpPointerGesturePinchV1? _zwpPointerGesturePinch;
+        private ZwpPointerGestureSwipeV1? _zwpPointerGestureSwipe;
+
         private Point _pointerPosition;
         private WlCursor? _currentCursor;
         private int _currentCursorImageIndex;
         private IDisposable? _pointerTimer;
+
+        private int _touchId;
+        private Point _touchPosition;
 
         private IntPtr _xkbContext;
         private IntPtr _xkbKeymap;
@@ -89,6 +96,12 @@ namespace Avalonia.Wayland
                 _wlPointer = _platform.WlSeat.GetPointer();
                 _wlPointer.Events = this;
                 MouseDevice = new MouseDevice();
+                if (_platform.ZwpPointerGestures is null)
+                    return;
+                _zwpPointerGesturePinch = _platform.ZwpPointerGestures.GetPinchGesture(_wlPointer);
+                _zwpPointerGestureSwipe = _platform.ZwpPointerGestures.GetSwipeGesture(_wlPointer);
+                _zwpPointerGesturePinch.Events = this;
+                _zwpPointerGestureSwipe.Events = this;
             }
             if (capabilities.HasAllFlags(WlSeat.CapabilityEnum.Keyboard))
             {
@@ -121,11 +134,12 @@ namespace Avalonia.Wayland
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
-            if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.InputRoot is null)
                 return;
             PointerSurfaceSerial = serial;
-            var args = new RawPointerEventArgs(MouseDevice!, 0, _platform.WlScreens.ActiveWindow.InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers);
-            _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+            var args = new RawPointerEventArgs(MouseDevice!, 0, window.InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers);
+            window.Input?.Invoke(args);
         }
 
         public void OnMotion(WlPointer eventSender, uint time, WlFixed surfaceX, WlFixed surfaceY)
@@ -279,9 +293,9 @@ namespace Avalonia.Wayland
 
         public void OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
         {
+            Serial = serial;
             if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
                 return;
-            Serial = serial;
             var code = key + 8;
             var sym = LibXkbCommon.xkb_state_key_get_one_sym(_xkbState, code);
             var avaloniaKey = XkbKeyTransform.ConvertKey(sym);
@@ -347,27 +361,114 @@ namespace Avalonia.Wayland
         public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, WlFixed x, WlFixed y)
         {
             Serial = serial;
+            _touchId = id;
+            _platform.WlScreens.SetActiveSurface(surface);
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.Input is null || window.InputRoot is null)
+                return;
+            _touchPosition = new Point((double)x, (double)y);
+            var args = new RawTouchEventArgs(TouchDevice!, time, window.InputRoot, RawPointerEventType.TouchBegin, _touchPosition, RawInputModifiers, id);
+            window.Input.Invoke(args);
         }
 
         public void OnUp(WlTouch eventSender, uint serial, uint time, int id)
         {
             Serial = serial;
+            _touchId = id;
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.Input is null || window.InputRoot is null)
+                return;
+            var args = new RawTouchEventArgs(TouchDevice!, time, window.InputRoot, RawPointerEventType.TouchEnd, _touchPosition, RawInputModifiers, id);
+            window.Input.Invoke(args);
         }
 
-        public void OnMotion(WlTouch eventSender, uint time, int id, WlFixed x, WlFixed y) { }
+        public void OnMotion(WlTouch eventSender, uint time, int id, WlFixed x, WlFixed y)
+        {
+            _touchId = id;
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.Input is null || window.InputRoot is null)
+                return;
+            _touchPosition = new Point((double)x, (double)y);
+            var args = new RawTouchEventArgs(TouchDevice!, time, window.InputRoot, RawPointerEventType.TouchUpdate, _touchPosition, RawInputModifiers, id);
+            window.Input.Invoke(args);
+        }
 
         public void OnFrame(WlTouch eventSender) { }
 
-        public void OnCancel(WlTouch eventSender) { }
+        public void OnCancel(WlTouch eventSender)
+        {
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.Input is null || window.InputRoot is null || _touchId == 0)
+                return;
+            var args = new RawTouchEventArgs(TouchDevice!, 0, window.InputRoot, RawPointerEventType.TouchCancel, _touchPosition, RawInputModifiers, _touchId);
+            window.Input.Invoke(args);
+            _touchId = 0;
+        }
 
         public void OnShape(WlTouch eventSender, int id, WlFixed major, WlFixed minor) { }
 
         public void OnOrientation(WlTouch eventSender, int id, WlFixed orientation) { }
 
+        public void OnBegin(ZwpPointerGesturePinchV1 eventSender, uint serial, uint time, WlSurface surface, uint fingers)
+        {
+            Serial = serial;
+            _platform.WlScreens.SetActiveSurface(surface);
+        }
+
+        public void OnUpdate(ZwpPointerGesturePinchV1 eventSender, uint time, WlFixed dx, WlFixed dy, WlFixed scale, WlFixed rotation)
+        {
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.Input is null || window.InputRoot is null)
+                return;
+
+            var deltaMagnify = new Vector((double)dx, (double)dy);
+            if (deltaMagnify != Vector.Zero)
+            {
+                var magnifyArgs = new RawPointerGestureEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Magnify, _pointerPosition, deltaMagnify, RawInputModifiers);
+                window.Input.Invoke(magnifyArgs);
+            }
+
+            var rad = Math.PI / 180 * (double)rotation;
+            if (rad != 0)
+            {
+                var deltaRotation = new Vector(Math.Cos(rad), Math.Sin(rad));
+                var rotateArgs = new RawPointerGestureEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Rotate, _pointerPosition, deltaRotation, RawInputModifiers);
+                window.Input.Invoke(rotateArgs);
+            }
+        }
+
+        public void OnEnd(ZwpPointerGesturePinchV1 eventSender, uint serial, uint time, int cancelled)
+        {
+            Serial = serial;
+        }
+
+        public void OnBegin(ZwpPointerGestureSwipeV1 eventSender, uint serial, uint time, WlSurface surface, uint fingers)
+        {
+            Serial = serial;
+            _platform.WlScreens.SetActiveSurface(surface);
+        }
+
+        public void OnUpdate(ZwpPointerGestureSwipeV1 eventSender, uint time, WlFixed dx, WlFixed dy)
+        {
+            var window = _platform.WlScreens.ActiveWindow;
+            if (window?.Input is null || window.InputRoot is null)
+                return;
+            var deltaSwipe = new Vector((double)dx, (double)dy);
+            var args = new RawPointerGestureEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Swipe, _pointerPosition, deltaSwipe, RawInputModifiers);
+            window.Input.Invoke(args);
+        }
+
+        public void OnEnd(ZwpPointerGestureSwipeV1 eventSender, uint serial, uint time, int cancelled)
+        {
+            Serial = serial;
+        }
+
         public void Dispose()
         {
             if (_xkbContext != IntPtr.Zero)
                 LibXkbCommon.xkb_context_unref(_xkbContext);
+            _zwpPointerGesturePinch?.Dispose();
+            _zwpPointerGestureSwipe?.Dispose();
             _keyboardTimer?.Dispose();
             _wlPointer?.Dispose();
             _wlKeyboard?.Dispose();

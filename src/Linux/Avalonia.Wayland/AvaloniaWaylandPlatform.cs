@@ -11,6 +11,8 @@ using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
 using Avalonia.Wayland;
+
+using NWayland.Protocols.PointerGesturesUnstableV1;
 using NWayland.Protocols.TextInputUnstableV3;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgDecorationUnstableV1;
@@ -37,6 +39,7 @@ namespace Avalonia.Wayland
             ZxdgDecorationManager = WlRegistryHandler.BindRequiredInterface(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             ZwpTextInput = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
+            ZwpPointerGestures = WlRegistryHandler.Bind(ZwpPointerGesturesV1.BindFactory, ZwpPointerGesturesV1.InterfaceName, ZwpPointerGesturesV1.InterfaceVersion);
 
             XdgWmBase.Events = this;
 
@@ -55,6 +58,10 @@ namespace Avalonia.Wayland
 
             WlScreens = new WlScreens(this);
             WlInputDevice = new WlInputDevice(this);
+
+            if (ZwpTextInput is not null)
+                WlTextInputMethod = new WlTextInputMethod(this);
+
             WlDisplay.Roundtrip();
 
             DBusHelper.TryInitialize();
@@ -96,9 +103,13 @@ namespace Avalonia.Wayland
 
         internal ZwpTextInputManagerV3? ZwpTextInput { get; }
 
+        internal ZwpPointerGesturesV1? ZwpPointerGestures { get; }
+
         internal WlScreens WlScreens { get; }
 
         internal WlInputDevice WlInputDevice { get; }
+
+        internal WlTextInputMethod? WlTextInputMethod { get; }
 
         public IWindowImpl CreateWindow() => new WlToplevel(this);
 
@@ -114,9 +125,11 @@ namespace Avalonia.Wayland
 
         public void Dispose()
         {
+            WlTextInputMethod?.Dispose();
             ZxdgDecorationManager.Dispose();
             ZxdgExporter?.Dispose();
             ZwpTextInput?.Dispose();
+            ZwpPointerGestures?.Dispose();
             WlDataDeviceManager.Dispose();
             WlInputDevice.Dispose();
             WlScreens.Dispose();
