@@ -44,7 +44,7 @@ namespace Avalonia.Wayland
                 ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
                 : new Size(400, 600);
 
-            _wlFramebufferSurface = new WlFramebufferSurface(platform, this, WlSurface);
+            _wlFramebufferSurface = new WlFramebufferSurface(platform, this);
             var surfaces = new List<object> { _wlFramebufferSurface };
 
             var glFeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();

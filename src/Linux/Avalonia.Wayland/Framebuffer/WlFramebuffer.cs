@@ -9,7 +9,7 @@ namespace Avalonia.Wayland.Framebuffer
         private readonly WlSurface _wlSurface;
         private readonly WlBuffer _wlBuffer;
 
-        public WlFramebuffer(WlSurface wlSurface, WlBuffer wlBuffer, IntPtr address, PixelSize size, int stride, PixelFormat format)
+        public WlFramebuffer(WlSurface wlSurface, WlBuffer wlBuffer, IntPtr address, PixelSize size, int stride)
         {
             _wlSurface = wlSurface;
             _wlBuffer = wlBuffer;
@@ -17,7 +17,7 @@ namespace Avalonia.Wayland.Framebuffer
             Size = size;
             RowBytes = stride;
             Dpi = new Vector(96, 96);
-            Format = format;
+            Format = PixelFormat.Bgra8888;
         }
 
         public void Dispose()

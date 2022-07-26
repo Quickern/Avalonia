@@ -13,14 +13,12 @@ namespace Avalonia.Wayland.Framebuffer
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlWindow _wlWindow;
-        private readonly WlSurface _wlSurface;
         private readonly List<ResizableBuffer> _buffers;
 
-        public WlFramebufferSurface(AvaloniaWaylandPlatform platform, WlWindow wlWindow, WlSurface wlSurface)
+        public WlFramebufferSurface(AvaloniaWaylandPlatform platform, WlWindow wlWindow)
         {
             _platform = platform;
             _wlWindow = wlWindow;
-            _wlSurface = wlSurface;
             _buffers = new List<ResizableBuffer>();
         }
 
@@ -37,7 +35,8 @@ namespace Avalonia.Wayland.Framebuffer
                 _buffers.Add(buffer);
             }
 
-            return buffer.GetFramebuffer(_wlSurface, width, height, stride);
+            _wlWindow.RequestFrame();
+            return buffer.GetFramebuffer(_wlWindow.WlSurface, width, height, stride);
         }
 
         public void Dispose()
@@ -70,6 +69,8 @@ namespace Avalonia.Wayland.Framebuffer
                 {
                     _wlBuffer?.Dispose();
                     _wlBuffer = null;
+                    LibC.munmap(_data, new IntPtr(_size));
+                    _data = IntPtr.Zero;
                 }
 
                 if (_wlBuffer is null)
@@ -85,7 +86,7 @@ namespace Avalonia.Wayland.Framebuffer
                     LibC.close(fd);
                 }
 
-                return new WlFramebuffer(wlSurface, _wlBuffer!, _data, new PixelSize(width, height), stride, PixelFormat.Bgra8888);
+                return new WlFramebuffer(wlSurface, _wlBuffer!, _data, new PixelSize(width, height), stride);
             }
 
             public void OnRelease(WlBuffer eventSender) => Available = true;
@@ -93,7 +94,8 @@ namespace Avalonia.Wayland.Framebuffer
             public void Dispose()
             {
                 _wlBuffer?.Dispose();
-                LibC.munmap(_data, new IntPtr(_size));
+                if (_data != IntPtr.Zero)
+                    LibC.munmap(_data, new IntPtr(_size));
             }
         }
     }
