@@ -94,21 +94,7 @@ namespace Avalonia.Wayland
 
         public void SetEnabled(bool enable) { }
 
-        public void SetSystemDecorations(SystemDecorations enabled)
-        {
-            switch (enabled)
-            {
-                case SystemDecorations.Full:
-                    _toplevelDecoration.SetMode(ZxdgToplevelDecorationV1.ModeEnum.ServerSide);
-                    break;
-                case SystemDecorations.None:
-                case SystemDecorations.BorderOnly:
-                    _toplevelDecoration.SetMode(ZxdgToplevelDecorationV1.ModeEnum.ClientSide);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(enabled), enabled, null);
-            }
-        }
+        public void SetSystemDecorations(SystemDecorations enabled) => _toplevelDecoration.SetMode(enabled == SystemDecorations.Full ? ZxdgToplevelDecorationV1.ModeEnum.ServerSide : ZxdgToplevelDecorationV1.ModeEnum.ClientSide);
 
         public void SetIcon(IWindowIconImpl? icon) { }
 
