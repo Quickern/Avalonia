@@ -51,7 +51,7 @@ namespace Avalonia.Wayland
                 .Bind<ICursorFactory>().ToConstant(new WlCursorFactory(this))
                 .Bind<IClipboard>().ToConstant(wlDataHandler)
                 .Bind<IPlatformDragSource>().ToConstant(wlDataHandler)
-                .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
+                .Bind<IPlatformIconLoader>().ToConstant(new WlIconLoader())
                 .Bind<IStorageProviderFactory>().ToConstant(new WlStorageProviderFactory())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
 
@@ -116,8 +116,11 @@ namespace Avalonia.Wayland
 
         public ITrayIconImpl? CreateTrayIcon()
         {
-            // TODO
-            return null;
+            var dbusTrayIcon = new DBusTrayIconImpl();
+            if (!dbusTrayIcon.IsActive)
+                return null;
+            dbusTrayIcon.IconConverterDelegate = static impl => impl is WlIconData wlIconData ? wlIconData.Data : Array.Empty<uint>();
+            return dbusTrayIcon;
         }
 
         public void OnPing(XdgWmBase eventSender, uint serial) => XdgWmBase.Pong(serial);

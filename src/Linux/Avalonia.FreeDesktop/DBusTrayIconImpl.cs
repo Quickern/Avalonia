@@ -124,7 +124,11 @@ namespace Avalonia.FreeDesktop
             if (_connection is null || !_serviceConnected || _isDisposed)
                 return;
 
+#if NET5_0_OR_GREATER
+            var pid = Environment.ProcessId;
+#else
             var pid = Process.GetCurrentProcess().Id;
+#endif
             var tid = s_trayIconInstanceId++;
 
             _sysTrayServiceName = $"org.kde.StatusNotifierItem-{pid}-{tid}";
@@ -179,12 +183,12 @@ namespace Avalonia.FreeDesktop
                 return;
             }
 
-            var x11iconData = IconConverterDelegate(icon);
+            var iconData = IconConverterDelegate(icon);
 
-            if (x11iconData.Length == 0) return;
+            if (iconData.Length == 0) return;
 
-            var w = (int)x11iconData[0];
-            var h = (int)x11iconData[1];
+            var w = (int)iconData[0];
+            var h = (int)iconData[1];
 
             var pixLength = w * h;
             var pixByteArrayCounter = 0;
@@ -192,7 +196,7 @@ namespace Avalonia.FreeDesktop
 
             for (var i = 0; i < pixLength; i++)
             {
-                var rawPixel = x11iconData[i + 2];
+                var rawPixel = iconData[i + 2];
                 pixByteArray[pixByteArrayCounter++] = (byte)((rawPixel & 0xFF000000) >> 24);
                 pixByteArray[pixByteArrayCounter++] = (byte)((rawPixel & 0xFF0000) >> 16);
                 pixByteArray[pixByteArrayCounter++] = (byte)((rawPixel & 0xFF00) >> 8);
