@@ -1,8 +1,6 @@
 using System;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
-using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
@@ -44,9 +42,9 @@ namespace Avalonia.Wayland
 
         public Action<bool> ExtendClientAreaToDecorationsChanged { get; set; }
 
-        public IStorageProvider StorageProvider { get; private set; }
+        public IStorageProvider StorageProvider => null!; // WlStorageProviderFactory is used instead
 
-        public bool IsClientAreaExtendedToDecorations => false;
+        public bool IsClientAreaExtendedToDecorations { get; private set; }
 
         public bool NeedsManagedDecorations => false;
 
@@ -81,6 +79,8 @@ namespace Avalonia.Wayland
                 }
             }
         }
+
+        internal string? ExportedToplevelHandle { get; private set; }
 
         public void SetTitle(string? title) => _xdgToplevel.SetTitle(title ?? string.Empty);
 
@@ -180,15 +180,13 @@ namespace Avalonia.Wayland
 
         public void OnWmCapabilities(XdgToplevel eventSender, ReadOnlySpan<XdgToplevel.WmCapabilitiesEnum> capabilities) { }
 
-        public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode) { }
-
-        public void OnHandle(ZxdgExportedV2 eventSender, string handle)
+        public void OnConfigure(ZxdgToplevelDecorationV1 eventSender, ZxdgToplevelDecorationV1.ModeEnum mode)
         {
-            StorageProvider = new CompositeStorageProvider(new Func<Task<IStorageProvider?>>[]
-            {
-                () => DBusSystemDialog.TryCreate($"wayland:{handle}")
-            });
+            IsClientAreaExtendedToDecorations = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
+            ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
+
+        public void OnHandle(ZxdgExportedV2 eventSender, string handle) => ExportedToplevelHandle = handle;
 
         public override void Dispose()
         {

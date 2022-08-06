@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.FreeDesktop;
@@ -11,7 +10,6 @@ using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
 using Avalonia.Wayland;
-
 using NWayland.Protocols.PointerGesturesUnstableV1;
 using NWayland.Protocols.TextInputUnstableV3;
 using NWayland.Protocols.Wayland;
@@ -54,6 +52,7 @@ namespace Avalonia.Wayland
                 .Bind<IClipboard>().ToConstant(wlDataHandler)
                 .Bind<IPlatformDragSource>().ToConstant(wlDataHandler)
                 .Bind<IPlatformIconLoader>().ToConstant(new IconLoaderStub())
+                .Bind<IStorageProviderFactory>().ToConstant(new WlStorageProviderFactory())
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new LinuxMountedVolumeInfoProvider());
 
             WlScreens = new WlScreens(this);
@@ -175,9 +174,10 @@ namespace Avalonia
         public bool UseDeferredRendering { get; set; } = true;
 
         /// <summary>
-        /// The app ID identifies the general class of applications to which the surface belongs.
-        /// The compositor can use this to group multiple surfaces together, or to determine how to launch a new application.
+        /// The app ID identifies the general class of applications to which the surface belongs. <br/>
+        /// The compositor can use this to group multiple surfaces together, or to determine how to launch a new application. <br/>
+        /// As a best practice, it is suggested to select app ID's that match the basename of the application's .desktop file. For example, "org.freedesktop.FooViewer" where the .desktop file is "org.freedesktop.FooViewer.desktop".
         /// </summary>
-        public string? AppId { get; set; } = Assembly.GetEntryAssembly()?.GetName().Name;
+        public string? AppId { get; set; }
     }
 }

@@ -1,19 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Dialogs;
+using Avalonia.FreeDesktop;
 using Avalonia.Platform.Storage;
 
 namespace Avalonia.Wayland
 {
-    internal class CompositeStorageProvider : IStorageProvider
+    internal class WlCompositeStorageProvider : IStorageProvider
     {
-        private readonly IEnumerable<Func<Task<IStorageProvider?>>> _factories;
+        private readonly Window _window;
 
         private IStorageProvider? _storageProvider;
 
-        public CompositeStorageProvider(IEnumerable<Func<Task<IStorageProvider?>>> factories)
+        public WlCompositeStorageProvider(Window window)
         {
-            _factories = factories;
+            _window = window;
         }
 
         public bool CanOpen => true;
@@ -27,12 +30,13 @@ namespace Avalonia.Wayland
             if (_storageProvider is not null)
                 return _storageProvider;
 
-            foreach (var factory in _factories)
-            {
-                _storageProvider = await factory();
-                if (_storageProvider is not null)
-                    return _storageProvider;
-            }
+            var windowHandle = (_window.PlatformImpl as WlToplevel)?.ExportedToplevelHandle;
+            _storageProvider = windowHandle is not null
+                ? await DBusSystemDialog.TryCreate(windowHandle)
+                : new ManagedStorageProvider<Window>(_window, AvaloniaLocator.Current.GetService<ManagedFileDialogOptions>());
+
+            if (_storageProvider is not null)
+                return _storageProvider;
 
             throw new InvalidOperationException("No storage provider found");
         }
