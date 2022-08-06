@@ -29,46 +29,41 @@ namespace Avalonia.Wayland
         {
             if (_storageProvider is not null)
                 return _storageProvider;
-
             var windowHandle = (_window.PlatformImpl as WlToplevel)?.ExportedToplevelHandle;
-            _storageProvider = windowHandle is not null
-                ? await DBusSystemDialog.TryCreate(windowHandle)
-                : new ManagedStorageProvider<Window>(_window, AvaloniaLocator.Current.GetService<ManagedFileDialogOptions>());
-
-            if (_storageProvider is not null)
-                return _storageProvider;
-
-            throw new InvalidOperationException("No storage provider found");
+            if (windowHandle is not null)
+                _storageProvider = await DBusSystemDialog.TryCreate(windowHandle);
+            _storageProvider ??= new ManagedStorageProvider<Window>(_window, AvaloniaLocator.Current.GetService<ManagedFileDialogOptions>());
+            return _storageProvider;
         }
 
         public async Task<IReadOnlyList<IStorageFile>> OpenFilePickerAsync(FilePickerOpenOptions options)
         {
-            var provider = await EnsureStorageProvider().ConfigureAwait(false);
-            return await provider.OpenFilePickerAsync(options).ConfigureAwait(false);
+            var provider = await EnsureStorageProvider();
+            return await provider.OpenFilePickerAsync(options);
         }
 
         public async Task<IStorageFile?> SaveFilePickerAsync(FilePickerSaveOptions options)
         {
-            var provider = await EnsureStorageProvider().ConfigureAwait(false);
-            return await provider.SaveFilePickerAsync(options).ConfigureAwait(false);
+            var provider = await EnsureStorageProvider();
+            return await provider.SaveFilePickerAsync(options);
         }
 
         public async Task<IReadOnlyList<IStorageFolder>> OpenFolderPickerAsync(FolderPickerOpenOptions options)
         {
-            var provider = await EnsureStorageProvider().ConfigureAwait(false);
-            return await provider.OpenFolderPickerAsync(options).ConfigureAwait(false);
+            var provider = await EnsureStorageProvider();
+            return await provider.OpenFolderPickerAsync(options);
         }
 
         public async Task<IStorageBookmarkFile?> OpenFileBookmarkAsync(string bookmark)
         {
-            var provider = await EnsureStorageProvider().ConfigureAwait(false);
-            return await provider.OpenFileBookmarkAsync(bookmark).ConfigureAwait(false);
+            var provider = await EnsureStorageProvider();
+            return await provider.OpenFileBookmarkAsync(bookmark);
         }
 
         public async Task<IStorageBookmarkFolder?> OpenFolderBookmarkAsync(string bookmark)
         {
-            var provider = await EnsureStorageProvider().ConfigureAwait(false);
-            return await provider.OpenFolderBookmarkAsync(bookmark).ConfigureAwait(false);
+            var provider = await EnsureStorageProvider();
+            return await provider.OpenFolderBookmarkAsync(bookmark);
         }
     }
 }
