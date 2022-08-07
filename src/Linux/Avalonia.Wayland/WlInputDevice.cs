@@ -77,10 +77,10 @@ namespace Avalonia.Wayland
 
         public void SetCursor(WlCursor? wlCursor)
         {
-            _pointerTimer?.Dispose();
             wlCursor ??= _cursorFactory.GetCursor(StandardCursorType.Arrow) as WlCursor;
-            if (_wlPointer is null || wlCursor is null || wlCursor.ImageCount <= 0)
+            if (_wlPointer is null || wlCursor is null || wlCursor.ImageCount <= 0  || _currentCursor == wlCursor)
                 return;
+            _pointerTimer?.Dispose();
             _currentCursor = wlCursor;
             _currentCursorImageIndex = -1;
             if (wlCursor.ImageCount == 1)
