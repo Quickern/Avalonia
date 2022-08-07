@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
@@ -16,6 +17,7 @@ namespace Avalonia.Wayland
         private readonly XdgToplevel _xdgToplevel;
         private readonly ZxdgToplevelDecorationV1 _toplevelDecoration;
         private readonly ZxdgExportedV2? _exported;
+        private readonly TaskCompletionSource<bool> _decorationsConfigureEvent;
 
         private PixelSize _minSize;
         private PixelSize _maxSize;
@@ -32,6 +34,7 @@ namespace Avalonia.Wayland
             _exported = platform.ZxdgExporter?.ExportToplevel(WlSurface);
             if (_exported is not null)
                 _exported.Events = this;
+            _decorationsConfigureEvent = new TaskCompletionSource<bool>();
         }
 
         public Func<bool> Closing { get; set; }
@@ -146,6 +149,12 @@ namespace Avalonia.Wayland
 
         public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) { }
 
+        public override async void Show(bool activate, bool isDialog)
+        {
+            await _decorationsConfigureEvent.Task;
+            base.Show(activate, isDialog);
+        }
+
         public void OnConfigure(XdgToplevel eventSender, int width, int height, ReadOnlySpan<XdgToplevel.StateEnum> states)
         {
             var windowState = WindowState.Normal;
@@ -184,6 +193,7 @@ namespace Avalonia.Wayland
         {
             IsClientAreaExtendedToDecorations = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
+            _decorationsConfigureEvent.TrySetResult(true);
         }
 
         public void OnHandle(ZxdgExportedV2 eventSender, string handle) => ExportedToplevelHandle = handle;
