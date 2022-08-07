@@ -46,7 +46,7 @@ namespace Avalonia.Wayland
             _xdgPositioner.SetOffset((int)parameters.Offset.X, (int)parameters.Offset.Y);
             _xdgPositioner.SetSize((int)parameters.Size.Width, (int)parameters.Size.Height);
             _xdgPositioner.SetAnchorRect((int)Math.Ceiling(parameters.AnchorRectangle.X), (int)Math.Ceiling(parameters.AnchorRectangle.Y), (int)Math.Ceiling(parameters.AnchorRectangle.Width), (int)Math.Ceiling(parameters.AnchorRectangle.Height));
-            _xdgPositioner.SetConstraintAdjustment((uint)(XdgPositioner.ConstraintAdjustmentEnum)parameters.ConstraintAdjustment);
+            _xdgPositioner.SetConstraintAdjustment((uint)parameters.ConstraintAdjustment);
             if (_xdgPopup is null || XdgSurfaceConfigureSerial == 0)
                 return;
             _xdgPositioner.SetParentConfigure(Parent!.XdgSurfaceConfigureSerial);

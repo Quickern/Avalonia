@@ -701,8 +701,8 @@ namespace Avalonia.Controls
 
             SetWindowStartupLocation(Owner?.PlatformImpl);
 
-            Renderer?.Start();
             PlatformImpl?.Show(ShowActivated, false);
+            Renderer?.Start();
             OnOpened(EventArgs.Empty);
         }
 

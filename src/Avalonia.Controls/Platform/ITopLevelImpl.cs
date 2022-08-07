@@ -67,7 +67,7 @@ namespace Avalonia.Platform
         /// Gets the scaling factor for the toplevel. This is used for rendering.
         /// </summary>
         double RenderScaling { get; }
-
+        
         /// <summary>
         /// The list of native platform's surfaces that can be consumed by rendering subsystems.
         /// </summary>
@@ -145,12 +145,12 @@ namespace Avalonia.Platform
         /// Gets or sets a method called when the underlying implementation is destroyed.
         /// </summary>
         Action? Closed { get; set; }
-
+        
         /// <summary>
         /// Gets or sets a method called when the input focus is lost.
         /// </summary>
         Action? LostFocus { get; set; }
-
+        
         IPopupImpl? CreatePopup();
 
         /// <summary>
@@ -164,7 +164,7 @@ namespace Avalonia.Platform
         WindowTransparencyLevel TransparencyLevel { get; }
 
         /// <summary>
-        /// Gets the <see cref="AcrylicPlatformCompensationLevels"/> for the platform.
+        /// Gets the <see cref="AcrylicPlatformCompensationLevels"/> for the platform.        
         /// </summary>
         AcrylicPlatformCompensationLevels AcrylicCompensationLevels { get; }
     }
