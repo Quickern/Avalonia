@@ -137,6 +137,7 @@ namespace Avalonia.Wayland
             var window = _platform.WlScreens.ActiveWindow;
             if (window?.InputRoot is null)
                 return;
+            _currentCursor = null;
             PointerSurfaceSerial = serial;
             var args = new RawPointerEventArgs(MouseDevice!, 0, window.InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers);
             window.Input?.Invoke(args);

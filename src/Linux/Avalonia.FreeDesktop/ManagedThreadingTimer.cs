@@ -18,16 +18,17 @@ namespace Avalonia.FreeDesktop
         }
 
         public DispatcherPriority Priority { get; }
+
         public TimeSpan NextTick { get; private set; }
+
         public TimeSpan Interval { get; }
+
         public Action Tick { get; }
+
         public bool Disposed { get; internal set; }
 
-        public void Reschedule()
-        {
-            NextTick = _clock.Elapsed + Interval;
-        }
+        public void Reschedule() => NextTick = _clock.Elapsed + Interval;
 
-        public int CompareTo(ManagedThreadingTimer other) => Priority - other.Priority;
+        public int CompareTo(ManagedThreadingTimer? other) => other is not null ? Priority - other.Priority : 1;
     }
 }

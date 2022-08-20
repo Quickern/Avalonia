@@ -127,7 +127,7 @@ namespace Avalonia.Wayland
             if (_platform.Options.UseCompositor)
                 return new CompositingRenderer(root, _platform.Compositor!);
             if (_platform.Options.UseDeferredRendering)
-                return new DeferredRenderer(root, loop) { RenderOnlyOnRenderThread = true };
+                return new DeferredRenderer(root, loop);
             return new ImmediateRenderer(root);
         }
 
@@ -151,11 +151,7 @@ namespace Avalonia.Wayland
             TransparencyLevelChanged?.Invoke(transparencyLevel);
         }
 
-        public virtual void Show(bool activate, bool isDialog)
-        {
-            RequestFrame();
-            Paint?.Invoke(Rect.Empty);
-        }
+        public virtual void Show(bool activate, bool isDialog) => Paint?.Invoke(Rect.Empty);
 
         public void Hide()
         {

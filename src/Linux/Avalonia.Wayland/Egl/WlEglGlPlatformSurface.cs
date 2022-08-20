@@ -25,10 +25,10 @@ namespace Avalonia.Wayland.Egl
             private readonly EglPlatformOpenGlInterface _egl;
             private readonly WlEglSurfaceInfo _info;
 
-            private EglSurface? _glSurface;
+            private EglSurface _glSurface;
             private PixelSize _currentSize;
 
-            public RenderTarget(EglPlatformOpenGlInterface egl, EglSurface? glSurface, WlEglSurfaceInfo info) : base(egl)
+            public RenderTarget(EglPlatformOpenGlInterface egl, EglSurface glSurface, WlEglSurfaceInfo info) : base(egl)
             {
                 _egl = egl;
                 _glSurface = glSurface;
@@ -36,14 +36,13 @@ namespace Avalonia.Wayland.Egl
                 _currentSize = info.Size;
             }
 
-            public override void Dispose() => _glSurface?.Dispose();
+            public override void Dispose() => _glSurface.Dispose();
 
             public override IGlPlatformSurfaceRenderingSession BeginDraw()
             {
-                if (_info.Size != _currentSize || _glSurface is null)
+                if (_info.Size != _currentSize)
                 {
-                    _glSurface?.Dispose();
-                    _glSurface = null;
+                    _glSurface.Dispose();
                     _glSurface = _egl.CreateWindowSurface(_info.Handle);
                     _currentSize = _info.Size;
                 }

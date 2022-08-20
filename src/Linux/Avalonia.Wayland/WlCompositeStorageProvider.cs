@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -14,10 +13,7 @@ namespace Avalonia.Wayland
 
         private IStorageProvider? _storageProvider;
 
-        public WlCompositeStorageProvider(Window window)
-        {
-            _window = window;
-        }
+        public WlCompositeStorageProvider(Window window) => _window = window;
 
         public bool CanOpen => true;
 

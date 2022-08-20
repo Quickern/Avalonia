@@ -92,7 +92,8 @@ namespace Avalonia.FreeDesktop
     public enum Errno
     {
         EINTR = 4,
-        EAGAIN = 11
+        EAGAIN = 11,
+        EPIPE = 32
     }
 
     [Flags]

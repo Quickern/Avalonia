@@ -19,7 +19,7 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal class AvaloniaWaylandPlatform : IWindowingPlatform, XdgWmBase.IEvents
+    internal class AvaloniaWaylandPlatform : IWindowingPlatform, IDisposable, XdgWmBase.IEvents
     {
         public AvaloniaWaylandPlatform(WaylandPlatformOptions options)
         {
