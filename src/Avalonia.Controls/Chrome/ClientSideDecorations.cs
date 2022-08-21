@@ -12,14 +12,14 @@ namespace Avalonia.Controls.Chrome
         {
             base.OnApplyTemplate(e);
 
-            SetupResizeBorder(e, "PART_Top", StandardCursorType.TopSide, WindowEdge.North);
-            SetupResizeBorder(e, "PART_Right", StandardCursorType.RightSide, WindowEdge.East);
-            SetupResizeBorder(e, "PART_Bottom", StandardCursorType.BottomSide, WindowEdge.South);
-            SetupResizeBorder(e, "PART_Left", StandardCursorType.LeftSide, WindowEdge.West);
-            SetupResizeBorder(e, "PART_TopLeft", StandardCursorType.TopLeftCorner, WindowEdge.NorthWest);
-            SetupResizeBorder(e, "PART_TopRight", StandardCursorType.TopRightCorner, WindowEdge.NorthEast);
-            SetupResizeBorder(e, "PART_BottomLeft", StandardCursorType.BottomLeftCorner, WindowEdge.SouthWest);
-            SetupResizeBorder(e, "PART_BottomRight", StandardCursorType.BottomRightCorner, WindowEdge.SouthEast);
+            SetupResizeBorder(e, "PART_ResizeTop", StandardCursorType.TopSide, WindowEdge.North);
+            SetupResizeBorder(e, "PART_ResizeRight", StandardCursorType.RightSide, WindowEdge.East);
+            SetupResizeBorder(e, "PART_ResizeBottom", StandardCursorType.BottomSide, WindowEdge.South);
+            SetupResizeBorder(e, "PART_ResizeLeft", StandardCursorType.LeftSide, WindowEdge.West);
+            SetupResizeBorder(e, "PART_ResizeTopLeft", StandardCursorType.TopLeftCorner, WindowEdge.NorthWest);
+            SetupResizeBorder(e, "PART_ResizeTopRight", StandardCursorType.TopRightCorner, WindowEdge.NorthEast);
+            SetupResizeBorder(e, "PART_ResizeBottomLeft", StandardCursorType.BottomLeftCorner, WindowEdge.SouthWest);
+            SetupResizeBorder(e, "PART_ResizeBottomRight", StandardCursorType.BottomRightCorner, WindowEdge.SouthEast);
         }
 
         protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

@@ -35,6 +35,8 @@ namespace Avalonia.Controls.Chrome
                         _captionButtons.Height = Height;
                     }
                 }
+
+                IsVisible = window.PlatformImpl?.NeedsManagedDecorations ?? false;
             }
         }
 
@@ -51,7 +53,13 @@ namespace Avalonia.Controls.Chrome
             if (VisualRoot is Window window)
             {
                 _captionButtons?.Attach(window);
-                _container.PointerPressed += (sender, args) => window.PlatformImpl?.BeginMoveDrag(args);
+                _container.PointerPressed += (_, args) =>
+                {
+                    if (args.ClickCount == 1)
+                        window.PlatformImpl?.BeginMoveDrag(args);
+                    else
+                        window.WindowState = window.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                };
 
                 UpdateSize(window);
             }
