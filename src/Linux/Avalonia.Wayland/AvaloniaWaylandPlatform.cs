@@ -34,7 +34,7 @@ namespace Avalonia.Wayland
             WlShm = WlRegistryHandler.BindRequiredInterface(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
             WlDataDeviceManager = WlRegistryHandler.BindRequiredInterface(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
             XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
-            ZxdgDecorationManager = WlRegistryHandler.BindRequiredInterface(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
+            ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             ZwpTextInput = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
             ZwpPointerGestures = WlRegistryHandler.Bind(ZwpPointerGesturesV1.BindFactory, ZwpPointerGesturesV1.InterfaceName, ZwpPointerGesturesV1.InterfaceVersion);
@@ -96,7 +96,7 @@ namespace Avalonia.Wayland
 
         internal XdgWmBase XdgWmBase { get; }
 
-        internal ZxdgDecorationManagerV1 ZxdgDecorationManager { get; }
+        internal ZxdgDecorationManagerV1? ZxdgDecorationManager { get; }
 
         internal ZxdgExporterV2? ZxdgExporter { get; }
 
@@ -128,7 +128,7 @@ namespace Avalonia.Wayland
         public void Dispose()
         {
             WlTextInputMethod?.Dispose();
-            ZxdgDecorationManager.Dispose();
+            ZxdgDecorationManager?.Dispose();
             ZxdgExporter?.Dispose();
             ZwpTextInput?.Dispose();
             ZwpPointerGestures?.Dispose();

@@ -55,6 +55,8 @@
                 <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/TreeViewItem.xaml" />
                 <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/WindowNotificationManager.xaml" />
                 <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/Window.xaml" />
+                <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/ClientSideDecorations.xaml" />
+                <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/ResizeBorder.xaml" />
                 <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/ComboBox.xaml" />
                 <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/ComboBoxItem.xaml" />
                 <ResourceInclude Source="avares://Avalonia.Themes.Fluent/Controls/ContentControl.xaml" />

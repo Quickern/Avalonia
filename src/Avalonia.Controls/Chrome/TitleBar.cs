@@ -13,6 +13,7 @@ namespace Avalonia.Controls.Chrome
     public class TitleBar : TemplatedControl
     {
         private CompositeDisposable? _disposables;
+        private Panel? _container;
         private CaptionButtons? _captionButtons;
 
         private void UpdateSize(Window window)
@@ -34,8 +35,6 @@ namespace Avalonia.Controls.Chrome
                         _captionButtons.Height = Height;
                     }
                 }
-
-                IsVisible = window.PlatformImpl?.NeedsManagedDecorations ?? false;
             }
         }
 
@@ -45,11 +44,14 @@ namespace Avalonia.Controls.Chrome
 
             _captionButtons?.Detach();
 
+            _container = e.NameScope.Get<Panel>("PART_Container");
+
             _captionButtons = e.NameScope.Get<CaptionButtons>("PART_CaptionButtons");
 
             if (VisualRoot is Window window)
             {
                 _captionButtons?.Attach(window);
+                _container.PointerPressed += (sender, args) => window.PlatformImpl?.BeginMoveDrag(args);
 
                 UpdateSize(window);
             }
@@ -91,6 +93,7 @@ namespace Avalonia.Controls.Chrome
 
             _disposables?.Dispose();
 
+            _container = null;
             _captionButtons?.Detach();
             _captionButtons = null;
         }

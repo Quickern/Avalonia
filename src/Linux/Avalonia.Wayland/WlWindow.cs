@@ -23,6 +23,7 @@ namespace Avalonia.Wayland
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
+        private readonly WlRegion _wlRegion;
         private readonly IntPtr _eglWindow;
 
         private WlCallback? _frameCallback;
@@ -30,6 +31,7 @@ namespace Avalonia.Wayland
         protected WlWindow(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
+            _wlRegion = platform.WlCompositor.CreateRegion();
             WlSurface = platform.WlCompositor.CreateSurface();
             WlSurface.Events = this;
             XdgSurface = platform.XdgWmBase.GetXdgSurface(WlSurface);
@@ -147,6 +149,7 @@ namespace Avalonia.Wayland
         {
             if (transparencyLevel == TransparencyLevel)
                 return;
+            WlSurface.SetOpaqueRegion(transparencyLevel == WindowTransparencyLevel.None ? _wlRegion : null);
             TransparencyLevel = transparencyLevel;
             TransparencyLevelChanged?.Invoke(transparencyLevel);
         }
@@ -171,6 +174,8 @@ namespace Avalonia.Wayland
             var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
             if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
                 return;
+            _wlRegion.Subtract(0, 0, (int)ClientSize.Width, (int)ClientSize.Height);
+            _wlRegion.Add(0, 0, PendingSize.Width, PendingSize.Height);
             ClientSize = pendingSize;
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
@@ -219,6 +224,7 @@ namespace Avalonia.Wayland
             _platform.WlScreens.RemoveWindow(this);
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
+            _wlRegion.Dispose();
             _wlFramebufferSurface.Dispose();
             XdgSurface.Dispose();
             WlSurface.Dispose();
