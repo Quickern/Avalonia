@@ -19,7 +19,7 @@ namespace Avalonia.Wayland
 
         private PixelSize _minSize;
         private PixelSize _maxSize;
-        private ExtendClientAreaChromeHints _extendClientAreaChromeHints;
+        private ExtendClientAreaChromeHints _extendClientAreaChromeHints = ExtendClientAreaChromeHints.Default;
 
         public WlToplevel(AvaloniaWaylandPlatform platform) : base(platform)
         {
@@ -85,6 +85,12 @@ namespace Avalonia.Wayland
 
         internal string? ExportedToplevelHandle { get; private set; }
 
+        public override void Show(bool activate, bool isDialog)
+        {
+            ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
+            base.Show(activate, isDialog);
+        }
+
         public void SetTitle(string? title) => _xdgToplevel.SetTitle(title ?? string.Empty);
 
         public void SetParent(IWindowImpl parent)
@@ -97,7 +103,12 @@ namespace Avalonia.Wayland
 
         public void SetEnabled(bool enable) { }
 
-        public void SetSystemDecorations(SystemDecorations enabled) => _toplevelDecoration?.SetMode(enabled == SystemDecorations.Full ? ZxdgToplevelDecorationV1.ModeEnum.ServerSide : ZxdgToplevelDecorationV1.ModeEnum.ClientSide);
+        public void SetSystemDecorations(SystemDecorations enabled)
+        {
+            var decorations = enabled == SystemDecorations.Full;
+            _extendClientAreaChromeHints = decorations ? ExtendClientAreaChromeHints.Default : ExtendClientAreaChromeHints.NoChrome;
+            _toplevelDecoration?.SetMode(decorations ? ZxdgToplevelDecorationV1.ModeEnum.ServerSide : ZxdgToplevelDecorationV1.ModeEnum.ClientSide);
+        }
 
         public void SetIcon(IWindowIconImpl? icon) { } // Impossible on Wayland, an AppId should be used instead.
 
