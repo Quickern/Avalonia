@@ -29,7 +29,7 @@ namespace Avalonia.Wayland
             _wlDataDevice.Events = _wlDataDeviceHandler;
         }
 
-        public Task<string> GetTextAsync() => Task.FromResult(_wlDataDeviceHandler.SelectionOffer?.GetText() ?? string.Empty);
+        public Task<string?> GetTextAsync() => Task.FromResult(_wlDataDeviceHandler.SelectionOffer?.GetText() ?? null);
 
         public Task SetTextAsync(string text)
         {
@@ -52,9 +52,9 @@ namespace Avalonia.Wayland
             return Task.CompletedTask;
         }
 
-        public Task<string[]> GetFormatsAsync() =>
+        public Task<string[]?> GetFormatsAsync() =>
             _wlDataDeviceHandler.SelectionOffer is null
-                ? Task.FromResult(Array.Empty<string>())
+                ? Task.FromResult<string[]?>(null)
                 : Task.FromResult(_wlDataDeviceHandler.SelectionOffer.GetDataFormats().ToArray());
 
         public Task<object?> GetDataAsync(string format) => Task.FromResult(_wlDataDeviceHandler.SelectionOffer?.Get(format));
@@ -93,7 +93,7 @@ namespace Avalonia.Wayland
 
             public void OnEnter(WlDataDevice eventSender, uint serial, WlSurface surface, WlFixed x, WlFixed y, WlDataOffer? id)
             {
-                DisposeDnD();
+                DisposeCurrentDnD();
                 if (_currentOffer is null || _currentOffer.WlDataOffer != id)
                     return;
                 _enterSerial = serial;
@@ -107,12 +107,10 @@ namespace Avalonia.Wayland
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
                 var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, inputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
                 _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
-                var preferredAction = GetPreferredEffect(args.Effects, _platform.WlInputDevice.RawInputModifiers);
-                _dndOffer.WlDataOffer.SetActions((WlDataDeviceManager.DndActionEnum)args.Effects, (WlDataDeviceManager.DndActionEnum)preferredAction);
                 Accept(args);
             }
 
-            public void OnLeave(WlDataDevice eventSender) => DisposeDnD();
+            public void OnLeave(WlDataDevice eventSender) { }
 
             public void OnMotion(WlDataDevice eventSender, uint time, WlFixed x, WlFixed y)
             {
@@ -138,7 +136,8 @@ namespace Avalonia.Wayland
                 window.Input?.Invoke(args);
                 if (args.Effects != DragDropEffects.None)
                     _dndOffer.WlDataOffer.Finish();
-                DisposeDnD();
+                else
+                    DisposeCurrentDnD();
             }
 
             public void OnSelection(WlDataDevice eventSender, WlDataOffer? id)
@@ -153,7 +152,7 @@ namespace Avalonia.Wayland
             public void Dispose()
             {
                 DisposeSelection();
-                DisposeDnD();
+                DisposeCurrentDnD();
             }
 
             private void Accept(RawDragEvent args)
@@ -172,7 +171,7 @@ namespace Avalonia.Wayland
                 SelectionOffer = null;
             }
 
-            private void DisposeDnD()
+            private void DisposeCurrentDnD()
             {
                 _dndOffer?.Dispose();
                 _dndOffer = null;

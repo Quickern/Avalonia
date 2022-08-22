@@ -62,10 +62,7 @@ namespace Avalonia.Wayland
             if (mimeType is null)
                 return null;
             var fd = Receive(mimeType);
-            if (fd < 0)
-                return null;
-            var sb = ReceiveText(fd);
-            return sb.ToString();
+            return fd < 0 ? null : ReceiveText(fd);
         }
 
         public IEnumerable<string>? GetFileNames()
@@ -73,10 +70,7 @@ namespace Avalonia.Wayland
             if (!MimeTypes.Contains(Wayland.MimeTypes.UriList))
                 return null;
             var fd = Receive(Wayland.MimeTypes.UriList);
-            if (fd < 0)
-                return null;
-            var sb = ReceiveText(fd);
-            return sb.ToString().Split('\n');
+            return fd < 0 ? null : ReceiveText(fd).Split('\n');
         }
 
         public unsafe object? Get(string dataFormat)
@@ -123,6 +117,7 @@ namespace Avalonia.Wayland
 
         private unsafe int Receive(string mimeType)
         {
+            Console.WriteLine("Receive");
             var fds = stackalloc int[2];
             if (LibC.pipe2(fds, FileDescriptorFlags.O_RDONLY) < 0)
             {
@@ -136,7 +131,7 @@ namespace Avalonia.Wayland
             return fds[0];
         }
 
-        private static unsafe StringBuilder ReceiveText(int fd)
+        private static unsafe string ReceiveText(int fd)
         {
             Span<byte> buffer = stackalloc byte[1024];
             var sb = new StringBuilder();
@@ -152,7 +147,7 @@ namespace Avalonia.Wayland
             }
 
             LibC.close(fd);
-            return sb;
+            return sb.ToString();
         }
     }
 }
