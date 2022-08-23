@@ -112,10 +112,14 @@ namespace Avalonia.Wayland
                 return -1;
             }
 
-            if (PollDisplay(EpollEvents.EPOLLIN, timeout) == -1)
+            switch (PollDisplay(EpollEvents.EPOLLIN, timeout))
             {
-                _platform.WlDisplay.CancelRead();
-                return -1;
+                case 0:
+                    _platform.WlDisplay.CancelRead();
+                    return 0;
+                case -1:
+                    _platform.WlDisplay.CancelRead();
+                    return -1;
             }
 
             if (_platform.WlDisplay.ReadEvents() == -1)
