@@ -110,7 +110,7 @@ namespace Avalonia.Wayland
                 Accept(args);
             }
 
-            public void OnLeave(WlDataDevice eventSender) { }
+            public void OnLeave(WlDataDevice eventSender) => DisposeCurrentDnD();
 
             public void OnMotion(WlDataDevice eventSender, uint time, WlFixed x, WlFixed y)
             {
@@ -135,7 +135,7 @@ namespace Avalonia.Wayland
                 var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, window.InputRoot, _position, _dndOffer, _dndOffer.MatchedDragDropEffects, modifiers);
                 window.Input?.Invoke(args);
                 if (args.Effects != DragDropEffects.None)
-                    _dndOffer.WlDataOffer.Finish();
+                    _dndOffer?.WlDataOffer.Finish();
                 else
                     DisposeCurrentDnD();
             }

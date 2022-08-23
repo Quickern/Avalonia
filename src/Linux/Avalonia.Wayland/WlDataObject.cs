@@ -12,6 +12,7 @@ namespace Avalonia.Wayland
     internal sealed class WlDataObject : IDataObject, IDisposable, WlDataOffer.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
+        private readonly DataObject _cache;
 
         public WlDataObject(AvaloniaWaylandPlatform platform, WlDataOffer wlDataOffer)
         {
@@ -19,6 +20,7 @@ namespace Avalonia.Wayland
             WlDataOffer = wlDataOffer;
             WlDataOffer.Events = this;
             MimeTypes = new List<string>();
+            _cache = new DataObject();
         }
 
         internal WlDataOffer WlDataOffer { get; }
@@ -58,19 +60,27 @@ namespace Avalonia.Wayland
 
         public string? GetText()
         {
+            if (_cache.GetText() is { } text)
+                return text;
             var mimeType = MimeTypes.FirstOrDefault(static x => x is Wayland.MimeTypes.Text) ?? MimeTypes.FirstOrDefault(static x => x is Wayland.MimeTypes.TextUtf8);
             if (mimeType is null)
                 return null;
             var fd = Receive(mimeType);
-            return fd < 0 ? null : ReceiveText(fd);
+            var result = fd < 0 ? null : ReceiveText(fd);
+            _cache.Set(DataFormats.Text, result);
+            return result;
         }
 
         public IEnumerable<string>? GetFileNames()
         {
+            if (_cache.GetFileNames() is { } fileNames)
+                return fileNames;
             if (!MimeTypes.Contains(Wayland.MimeTypes.UriList))
                 return null;
             var fd = Receive(Wayland.MimeTypes.UriList);
-            return fd < 0 ? null : ReceiveText(fd).Split('\n');
+            var result = fd < 0 ? null : ReceiveText(fd).Split('\n');
+            _cache.Set(DataFormats.FileNames, result);
+            return result;
         }
 
         public unsafe object? Get(string dataFormat)
@@ -82,6 +92,9 @@ namespace Avalonia.Wayland
                 case DataFormats.FileNames:
                     return GetFileNames();
             }
+
+            if (_cache.Get(dataFormat) is { } obj)
+                return obj;
 
             if (!MimeTypes.Contains(dataFormat))
                 return null;
@@ -104,7 +117,9 @@ namespace Avalonia.Wayland
             }
 
             LibC.close(fd);
-            return ms.ToArray();
+            var result = ms.ToArray();
+            _cache.Set(dataFormat, result);
+            return result;
         }
 
         public void OnOffer(WlDataOffer eventSender, string mimeType) => MimeTypes.Add(mimeType);
