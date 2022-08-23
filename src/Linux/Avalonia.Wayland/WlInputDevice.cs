@@ -134,8 +134,10 @@ namespace Avalonia.Wayland
             window.Input?.Invoke(args);
         }
 
-        public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
+        public void OnLeave(WlPointer eventSender, uint serial, WlSurface? surface)
         {
+            if (surface is null)
+                return;
             var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
