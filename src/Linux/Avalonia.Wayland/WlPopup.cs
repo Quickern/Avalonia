@@ -31,7 +31,8 @@ namespace Avalonia.Wayland
             {
                 _xdgPopup = XdgSurface.GetPopup(Parent!.XdgSurface, _xdgPositioner);
                 _xdgPopup.Events = this;
-                _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.Serial);
+                _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.UserActionDownSerial);
+                WlSurface.Commit();
             }
 
             base.Show(activate, isDialog);
@@ -47,20 +48,19 @@ namespace Avalonia.Wayland
             _xdgPositioner.SetSize((int)parameters.Size.Width, (int)parameters.Size.Height);
             _xdgPositioner.SetAnchorRect((int)Math.Ceiling(parameters.AnchorRectangle.X), (int)Math.Ceiling(parameters.AnchorRectangle.Y), (int)Math.Ceiling(parameters.AnchorRectangle.Width), (int)Math.Ceiling(parameters.AnchorRectangle.Height));
             _xdgPositioner.SetConstraintAdjustment((uint)parameters.ConstraintAdjustment);
-            if (_xdgPopup is null || XdgSurfaceConfigureSerial == 0)
-                return;
-            _xdgPositioner.SetParentConfigure(Parent!.XdgSurfaceConfigureSerial);
-            _xdgPopup.Reposition(_xdgPositioner, ++_repositionToken);
+            if (_xdgPopup is not null && XdgSurfaceConfigureSerial != 0)
+            {
+                _xdgPositioner.SetParentConfigure(Parent!.XdgSurfaceConfigureSerial);
+                _xdgPopup.Reposition(_xdgPositioner, ++_repositionToken);
+            }
+
+            WlSurface.Commit();
         }
 
         public void OnConfigure(XdgPopup eventSender, int x, int y, int width, int height)
         {
             PendingSize = new PixelSize(width, height);
-            var position = new PixelPoint(x, y);
-            if (position == Position)
-                return;
-            Position = position;
-            PositionChanged?.Invoke(Position);
+            Position = new PixelPoint(x, y);
         }
 
         public void OnPopupDone(XdgPopup eventSender)
@@ -71,7 +71,7 @@ namespace Avalonia.Wayland
             Input?.Invoke(args);
         }
 
-        public void OnRepositioned(XdgPopup eventSender, uint token) { }
+        public void OnRepositioned(XdgPopup eventSender, uint token) => PositionChanged?.Invoke(Position);
 
         public override void Dispose()
         {

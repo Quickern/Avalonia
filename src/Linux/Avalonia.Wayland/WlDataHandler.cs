@@ -61,7 +61,7 @@ namespace Avalonia.Wayland
 
         public Task<DragDropEffects> DoDragDrop(PointerEventArgs triggerEvent, IDataObject data, DragDropEffects allowedEffects)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.PointerFocus;
             if (window is null)
                 return Task.FromResult(DragDropEffects.None);
             triggerEvent.Pointer.Capture(null);
@@ -99,14 +99,14 @@ namespace Avalonia.Wayland
                 _enterSerial = serial;
                 _dndOffer = _currentOffer;
                 _currentOffer = null;
-                if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+                var window = _platform.WlScreens.PointerFocus;
+                if (window?.InputRoot is null)
                     return;
                 _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-                var inputRoot = _platform.WlScreens.ActiveWindow.InputRoot;
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, inputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
-                _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, window.InputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
+                window.Input?.Invoke(args);
                 Accept(args);
             }
 
@@ -114,7 +114,7 @@ namespace Avalonia.Wayland
 
             public void OnMotion(WlDataDevice eventSender, uint time, WlFixed x, WlFixed y)
             {
-                var window = _platform.WlScreens.ActiveWindow;
+                var window = _platform.WlScreens.PointerFocus;
                 if (window?.InputRoot is null || _dndOffer is null)
                     return;
                 _position = new Point((int)x, (int)y);
@@ -127,7 +127,7 @@ namespace Avalonia.Wayland
 
             public void OnDrop(WlDataDevice eventSender)
             {
-                var window = _platform.WlScreens.ActiveWindow;
+                var window = _platform.WlScreens.PointerFocus;
                 if (window?.InputRoot is null || _dndOffer is null)
                     return;
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();

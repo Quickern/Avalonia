@@ -50,7 +50,7 @@ namespace Avalonia.Wayland
             _zwpTextInput.Commit();
         }
 
-        public void OnEnter(ZwpTextInputV3 eventSender, WlSurface surface) => _platform.WlScreens.SetActiveSurface(surface);
+        public void OnEnter(ZwpTextInputV3 eventSender, WlSurface surface) => _platform.WlScreens.SetKeyboardFocus(surface);
 
         public void OnLeave(ZwpTextInputV3 eventSender, WlSurface surface) { }
 
@@ -64,7 +64,7 @@ namespace Avalonia.Wayland
 
         public void OnCommitString(ZwpTextInputV3 eventSender, string? text)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.KeyboardFocus;
             var keyboard = _platform.WlInputDevice.KeyboardDevice;
             if (window?.Input is null || window.InputRoot is null || keyboard is null || text is null)
                 return;

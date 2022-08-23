@@ -117,7 +117,6 @@ namespace Avalonia.Wayland
 
         private unsafe int Receive(string mimeType)
         {
-            Console.WriteLine("Receive");
             var fds = stackalloc int[2];
             if (LibC.pipe2(fds, FileDescriptorFlags.O_RDONLY) < 0)
             {

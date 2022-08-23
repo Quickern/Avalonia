@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+
 using Avalonia.Platform;
 using NWayland.Protocols.Wayland;
 
@@ -24,7 +26,11 @@ namespace Avalonia.Wayland
 
         public IReadOnlyList<Screen> AllScreens => _allScreens;
 
-        public WlWindow? ActiveWindow { get; private set; }
+        public WlWindow? KeyboardFocus { get; private set; }
+
+        public WlWindow? PointerFocus { get; private set; }
+
+        public WlWindow? TouchFocus { get; private set; }
 
         public Screen? ScreenFromWindow(IWindowBaseImpl window) => ScreenHelper.ScreenFromWindow(window, AllScreens);
 
@@ -47,14 +53,30 @@ namespace Avalonia.Wayland
         internal void RemoveWindow(WlWindow window)
         {
             _wlWindows.Remove(window.WlSurface);
-            if (ActiveWindow == window)
-                ActiveWindow = window.Parent;
+            if (KeyboardFocus == window)
+                KeyboardFocus = window.Parent;
+            if (PointerFocus == window)
+                PointerFocus = window.Parent;
+            if (TouchFocus == window)
+                TouchFocus = window.Parent;
         }
 
-        internal void SetActiveSurface(WlSurface? surface)
+        internal void SetKeyboardFocus(WlSurface? surface)
         {
             if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
-                ActiveWindow = window;
+                KeyboardFocus = window;
+        }
+
+        internal void SetPointerFocus(WlSurface? surface)
+        {
+            if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
+                PointerFocus = window;
+        }
+
+        internal void SetTouchFocus(WlSurface? surface)
+        {
+            if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
+                TouchFocus = window;
         }
 
         private void OnGlobalAdded(WlRegistryHandler.GlobalInfo globalInfo)

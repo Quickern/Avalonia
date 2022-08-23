@@ -75,6 +75,8 @@ namespace Avalonia.Wayland
 
         public uint KeyboardEnterSerial { get; private set; }
 
+        public uint UserActionDownSerial { get; private set; }
+
         public void SetCursor(WlCursor? wlCursor)
         {
             wlCursor ??= _cursorFactory.GetCursor(StandardCursorType.Arrow) as WlCursor;
@@ -122,8 +124,8 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, WlFixed surfaceX, WlFixed surfaceY)
         {
-            _platform.WlScreens.SetActiveSurface(surface);
-            var window = _platform.WlScreens.ActiveWindow;
+            _platform.WlScreens.SetPointerFocus(surface);
+            var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
             PointerSurfaceSerial = serial;
@@ -134,7 +136,7 @@ namespace Avalonia.Wayland
 
         public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
             _currentCursor = null;
@@ -145,7 +147,7 @@ namespace Avalonia.Wayland
 
         public void OnMotion(WlPointer eventSender, uint time, WlFixed surfaceX, WlFixed surfaceY)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
             _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
@@ -155,7 +157,7 @@ namespace Avalonia.Wayland
 
         public void OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
             Serial = serial;
@@ -165,6 +167,7 @@ namespace Avalonia.Wayland
                 case (uint)EvKey.BTN_LEFT when state is WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.LeftButtonDown;
                     RawInputModifiers |= RawInputModifiers.LeftMouseButton;
+                    UserActionDownSerial = serial;
                     break;
                 case (uint)EvKey.BTN_LEFT when state is WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.LeftButtonUp;
@@ -173,6 +176,7 @@ namespace Avalonia.Wayland
                 case (uint)EvKey.BTN_RIGHT when state is WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.RightButtonDown;
                     RawInputModifiers |= RawInputModifiers.RightMouseButton;
+                    UserActionDownSerial = serial;
                     break;
                 case (uint)EvKey.BTN_RIGHT when state is WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.RightButtonUp;
@@ -181,6 +185,7 @@ namespace Avalonia.Wayland
                 case (uint)EvKey.BTN_MIDDLE when state is WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.MiddleButtonDown;
                     RawInputModifiers |= RawInputModifiers.MiddleMouseButton;
+                    UserActionDownSerial = serial;
                     break;
                 case (uint)EvKey.BTN_MIDDLE when state is WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.MiddleButtonUp;
@@ -189,6 +194,7 @@ namespace Avalonia.Wayland
                 case (uint)EvKey.BTN_SIDE when state is WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.XButton2Down;
                     RawInputModifiers |= RawInputModifiers.XButton2MouseButton;
+                    UserActionDownSerial = serial;
                     break;
                 case (uint)EvKey.BTN_SIDE when state is WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.XButton2Up;
@@ -197,10 +203,12 @@ namespace Avalonia.Wayland
                 case (uint)EvKey.BTN_EXTRA when state is WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.XButton1Down;
                     RawInputModifiers |= RawInputModifiers.XButton1MouseButton;
+                    UserActionDownSerial = serial;
                     break;
                 case (uint)EvKey.BTN_EXTRA when state is WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.XButton1Up;
                     RawInputModifiers &= ~RawInputModifiers.XButton1MouseButton;
+                    UserActionDownSerial = serial;
                     break;
                 default:
                     return;
@@ -212,13 +220,14 @@ namespace Avalonia.Wayland
 
         public void OnAxis(WlPointer eventSender, uint time, WlPointer.AxisEnum axis, WlFixed value)
         {
-            if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+            var window = _platform.WlScreens.PointerFocus;
+            if (window?.InputRoot is null)
                 return;
             const double scrollFactor = 0.1;
             var scrollValue = -(double)value * scrollFactor;
             var delta = axis == WlPointer.AxisEnum.HorizontalScroll ? new Vector(scrollValue, 0) : new Vector(0, scrollValue);
-            var args = new RawMouseWheelEventArgs(MouseDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, _pointerPosition, delta, RawInputModifiers);
-            _platform.WlScreens.ActiveWindow.Input?.Invoke(args);
+            var args = new RawMouseWheelEventArgs(MouseDevice!, time, window.InputRoot, _pointerPosition, delta, RawInputModifiers);
+            window.Input?.Invoke(args);
         }
 
         public void OnFrame(WlPointer eventSender) { }
@@ -282,7 +291,7 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlKeyboard eventSender, uint serial, WlSurface surface, ReadOnlySpan<int> keys)
         {
-            _platform.WlScreens.SetActiveSurface(surface);
+            _platform.WlScreens.SetKeyboardFocus(surface);
             Serial = serial;
             KeyboardEnterSerial = serial;
         }
@@ -295,22 +304,24 @@ namespace Avalonia.Wayland
         public void OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
         {
             Serial = serial;
-            if (_platform.WlScreens.ActiveWindow?.InputRoot is null)
+            var window = _platform.WlScreens.KeyboardFocus;
+            if (window?.InputRoot is null)
                 return;
             var code = key + 8;
             var sym = LibXkbCommon.xkb_state_key_get_one_sym(_xkbState, code);
             var avaloniaKey = XkbKeyTransform.ConvertKey(sym);
             var eventType = state == WlKeyboard.KeyStateEnum.Pressed ? RawKeyEventType.KeyDown : RawKeyEventType.KeyUp;
-            var keyEventArgs = new RawKeyEventArgs(KeyboardDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, eventType, avaloniaKey, RawInputModifiers);
-            _platform.WlScreens.ActiveWindow.Input?.Invoke(keyEventArgs);
+            var keyEventArgs = new RawKeyEventArgs(KeyboardDevice!, time, window.InputRoot, eventType, avaloniaKey, RawInputModifiers);
+            window.Input?.Invoke(keyEventArgs);
 
             if (state == WlKeyboard.KeyStateEnum.Pressed)
             {
+                UserActionDownSerial = serial;
                 var text = GetComposedString(sym, code);
                 if (text is not null)
                 {
-                    var textEventArgs = new RawTextInputEventArgs(KeyboardDevice!, time, _platform.WlScreens.ActiveWindow.InputRoot, text);
-                    _platform.WlScreens.ActiveWindow.Input?.Invoke(textEventArgs);
+                    var textEventArgs = new RawTextInputEventArgs(KeyboardDevice!, time, window.InputRoot, text);
+                    window.Input?.Invoke(textEventArgs);
                 }
 
                 if (LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code) && _repeatInterval > TimeSpan.Zero)
@@ -362,9 +373,10 @@ namespace Avalonia.Wayland
         public void OnDown(WlTouch eventSender, uint serial, uint time, WlSurface surface, int id, WlFixed x, WlFixed y)
         {
             Serial = serial;
+            UserActionDownSerial = serial;
             _touchId = id;
-            _platform.WlScreens.SetActiveSurface(surface);
-            var window = _platform.WlScreens.ActiveWindow;
+            _platform.WlScreens.SetTouchFocus(surface);
+            var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
             _touchPosition = new Point((double)x, (double)y);
@@ -376,7 +388,7 @@ namespace Avalonia.Wayland
         {
             Serial = serial;
             _touchId = id;
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
             var args = new RawTouchEventArgs(TouchDevice!, time, window.InputRoot, RawPointerEventType.TouchEnd, _touchPosition, RawInputModifiers, id);
@@ -386,7 +398,7 @@ namespace Avalonia.Wayland
         public void OnMotion(WlTouch eventSender, uint time, int id, WlFixed x, WlFixed y)
         {
             _touchId = id;
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
             _touchPosition = new Point((double)x, (double)y);
@@ -398,7 +410,7 @@ namespace Avalonia.Wayland
 
         public void OnCancel(WlTouch eventSender)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null || _touchId == 0)
                 return;
             var args = new RawTouchEventArgs(TouchDevice!, 0, window.InputRoot, RawPointerEventType.TouchCancel, _touchPosition, RawInputModifiers, _touchId);
@@ -413,12 +425,12 @@ namespace Avalonia.Wayland
         public void OnBegin(ZwpPointerGesturePinchV1 eventSender, uint serial, uint time, WlSurface surface, uint fingers)
         {
             Serial = serial;
-            _platform.WlScreens.SetActiveSurface(surface);
+            _platform.WlScreens.SetPointerFocus(surface);
         }
 
         public void OnUpdate(ZwpPointerGesturePinchV1 eventSender, uint time, WlFixed dx, WlFixed dy, WlFixed scale, WlFixed rotation)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.PointerFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
 
@@ -446,12 +458,12 @@ namespace Avalonia.Wayland
         public void OnBegin(ZwpPointerGestureSwipeV1 eventSender, uint serial, uint time, WlSurface surface, uint fingers)
         {
             Serial = serial;
-            _platform.WlScreens.SetActiveSurface(surface);
+            _platform.WlScreens.SetPointerFocus(surface);
         }
 
         public void OnUpdate(ZwpPointerGestureSwipeV1 eventSender, uint time, WlFixed dx, WlFixed dy)
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.PointerFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
             var deltaSwipe = new Vector((double)dx, (double)dy);
@@ -480,7 +492,7 @@ namespace Avalonia.Wayland
 
         private void OnRepeatKey()
         {
-            var window = _platform.WlScreens.ActiveWindow;
+            var window = _platform.WlScreens.KeyboardFocus;
             if (window?.InputRoot is null)
                 return;
             window.Input?.Invoke(new RawKeyEventArgs(KeyboardDevice!, _repeatTime, window.InputRoot, RawKeyEventType.KeyDown, _repeatKey, RawInputModifiers));
