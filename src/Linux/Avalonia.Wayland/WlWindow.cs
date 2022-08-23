@@ -156,11 +156,7 @@ namespace Avalonia.Wayland
 
         public virtual void Show(bool activate, bool isDialog) => Paint?.Invoke(Rect.Empty);
 
-        public void Hide()
-        {
-            WlSurface.Attach(null, 0, 0);
-            WlSurface.Commit();
-        }
+        public abstract void Hide();
 
         public void Activate() { }
 

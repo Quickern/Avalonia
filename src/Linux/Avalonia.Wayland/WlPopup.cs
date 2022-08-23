@@ -38,6 +38,8 @@ namespace Avalonia.Wayland
             base.Show(activate, isDialog);
         }
 
+        public override void Hide() { }
+
         public void Update(PopupPositionerParameters parameters)
         {
             Resize(parameters.Size);
