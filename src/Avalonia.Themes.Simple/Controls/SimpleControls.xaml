@@ -21,6 +21,8 @@
         <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/Carousel.xaml" />
         <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/CaptionButtons.xaml" />
         <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/TitleBar.xaml" />
+        <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/ResizeBorder.xaml" />
+        <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/ClientSideDecorations.xaml" />
         <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/TextBox.xaml" />
         <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/AutoCompleteBox.xaml" />
         <ResourceInclude Source="avares://Avalonia.Themes.Simple/Controls/DataValidationErrors.xaml" />
