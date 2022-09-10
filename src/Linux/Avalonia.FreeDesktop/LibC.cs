@@ -139,7 +139,7 @@ namespace Avalonia.FreeDesktop
     public enum FileDescriptorFlags
     {
         O_RDONLY = 0,
-        O_NONBLOCK = 4000,
+        O_NONBLOCK = 2048,
         O_DIRECT = 40000,
         O_CLOEXEC = 2000000
     }

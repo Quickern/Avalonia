@@ -47,10 +47,10 @@ namespace Avalonia.Wayland
         }
 
         public T BindRequiredInterface<T>(IBindFactory<T> factory, string @interface, int version) where T : WlProxy =>
-            Bind(factory, @interface, version) ?? throw new NWaylandException($"Failed to bind required interface {@interface}");
+            Bind(factory, @interface, version) ?? throw new WaylandPlatformException($"Failed to bind required interface {@interface}.");
 
         public T BindRequiredInterface<T>(IBindFactory<T> factory, int version, GlobalInfo global) where T : WlProxy =>
-            Bind(factory, version, global) ?? throw new NWaylandException($"Failed to bind required interface {global.Interface}");
+            Bind(factory, version, global) ?? throw new WaylandPlatformException($"Failed to bind required interface {global.Interface}.");
 
         public T? Bind<T>(IBindFactory<T> factory, string @interface, int version) where T : WlProxy
         {

@@ -24,9 +24,9 @@ namespace Avalonia.Wayland
             _cursor = cursor;
             _stride = cursor.PixelSize.Width * 4;
             _size = cursor.PixelSize.Height * _stride;
-            _fd = FdHelper.CreateAnonymousFile(_size);
+            _fd = FdHelper.CreateAnonymousFile(_size, "wayland-shm");
             if (_fd == -1)
-                throw new NWaylandException("Failed to create FrameBuffer");
+                throw new WaylandPlatformException("Failed to create FrameBuffer.");
             _data = LibC.mmap(IntPtr.Zero, new IntPtr(_size), MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, _fd, IntPtr.Zero);
             _wlShmPool= platform.WlShm.CreatePool(_fd, _size);
             _wlBuffer = _wlShmPool.CreateBuffer(0, cursor.PixelSize.Width, cursor.PixelSize.Height, _stride, WlShm.FormatEnum.Argb8888);

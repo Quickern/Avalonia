@@ -23,19 +23,22 @@ namespace Avalonia.Wayland
 
         public unsafe ICursorImpl GetCursor(StandardCursorType cursorType)
         {
-            if (_wlCursorCache.TryGetValue(cursorType, out var wlCursor))
-                return wlCursor;
-            foreach (var name in _standardCursorNames[cursorType])
+            while (true)
             {
-                var cursor = LibWaylandCursor.wl_cursor_theme_get_cursor(_theme, name);
-                if (cursor is null)
-                    continue;
-                wlCursor = new WlThemeCursor(cursor);
-                _wlCursorCache.Add(cursorType, wlCursor);
-                return wlCursor;
-            }
+                if (_wlCursorCache.TryGetValue(cursorType, out var wlCursor))
+                    return wlCursor;
+                foreach (var name in _standardCursorNames[cursorType])
+                {
+                    var cursor = LibWaylandCursor.wl_cursor_theme_get_cursor(_theme, name);
+                    if (cursor is null)
+                        continue;
+                    wlCursor = new WlThemeCursor(cursor);
+                    _wlCursorCache.Add(cursorType, wlCursor);
+                    return wlCursor;
+                }
 
-            return GetCursor(StandardCursorType.Arrow);
+                cursorType = StandardCursorType.Arrow;
+            }
         }
 
         public ICursorImpl CreateCursor(IBitmapImpl cursor, PixelPoint hotSpot) => new WlBitmapCursor(_platform, cursor, hotSpot);

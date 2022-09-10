@@ -4,7 +4,6 @@ using System.Linq;
 using Avalonia.Controls.Platform.Surfaces;
 using Avalonia.FreeDesktop;
 using Avalonia.Platform;
-using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland.Framebuffer
@@ -75,9 +74,9 @@ namespace Avalonia.Wayland.Framebuffer
 
                 if (_wlBuffer is null)
                 {
-                    var fd = FdHelper.CreateAnonymousFile(size);
+                    var fd = FdHelper.CreateAnonymousFile(size, "wayland-shm");
                     if (fd == -1)
-                        throw new NWaylandException("Failed to create FrameBuffer");
+                        throw new WaylandPlatformException("Failed to create FrameBuffer");
                     _data = LibC.mmap(IntPtr.Zero, new IntPtr(size), MemoryProtection.PROT_READ | MemoryProtection.PROT_WRITE, SharingType.MAP_SHARED, fd, IntPtr.Zero);
                     using var wlShmPool = _platform.WlShm.CreatePool(fd, size);
                     _wlBuffer = wlShmPool.CreateBuffer(0, width, height, stride, WlShm.FormatEnum.Argb8888);

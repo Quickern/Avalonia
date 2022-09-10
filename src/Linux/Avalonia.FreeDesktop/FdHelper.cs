@@ -4,9 +4,9 @@ namespace Avalonia.FreeDesktop
 {
     internal static class FdHelper
     {
-        public static int CreateAnonymousFile(int size)
+        public static int CreateAnonymousFile(int size, string name)
         {
-            var fd = LibC.memfd_create("wayland-shm", MemoryFileCreation.MFD_CLOEXEC | MemoryFileCreation.MFD_ALLOW_SEALING);
+            var fd = LibC.memfd_create(name, MemoryFileCreation.MFD_CLOEXEC | MemoryFileCreation.MFD_ALLOW_SEALING);
             if (fd == -1)
                 return -1;
             LibC.fcntl(fd, FileSealCommand.F_ADD_SEALS, FileSeals.F_SEAL_SHRINK);

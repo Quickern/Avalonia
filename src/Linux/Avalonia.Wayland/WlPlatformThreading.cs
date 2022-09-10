@@ -39,7 +39,7 @@ namespace Avalonia.Wayland
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var nextTick = DispatchTimers(cancellationToken);
+                    var nextTick = DispatchTimers();
                     var timeout = nextTick == TimeSpan.MinValue ? -1 : Math.Max(1, (int)(nextTick - _clock.Elapsed).TotalMilliseconds);
                     if (DispatchDisplay(timeout) == -1)
                         break;
@@ -50,6 +50,9 @@ namespace Avalonia.Wayland
 
         public IDisposable StartTimer(DispatcherPriority priority, TimeSpan interval, Action tick)
         {
+            if (interval <= TimeSpan.Zero)
+                throw new ArgumentException("Interval must be positive", nameof(interval));
+
             var timer = new ManagedThreadingTimer(_clock, priority, interval, tick);
             _timers.Add(timer);
             return Disposable.Create(timer, t =>
@@ -61,14 +64,14 @@ namespace Avalonia.Wayland
 
         public void Signal(DispatcherPriority priority) { }
 
-        private TimeSpan DispatchTimers(CancellationToken cancellationToken)
+        private TimeSpan DispatchTimers()
         {
             _readyTimers.Clear();
             var now = _clock.Elapsed;
-            var nextTick = TimeSpan.MinValue;
+            var nextTick = TimeSpan.MaxValue;
             foreach (var timer in _timers)
             {
-                if (nextTick == TimeSpan.MinValue || timer.NextTick < nextTick)
+                if (timer.NextTick < nextTick)
                     nextTick = timer.NextTick;
                 if (timer.NextTick < now)
                     _readyTimers.Add(timer);
@@ -76,13 +79,11 @@ namespace Avalonia.Wayland
 
             foreach (var t in _readyTimers)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
                 t.Tick.Invoke();
                 if (t.Disposed)
                     continue;
                 t.Reschedule();
-                if (nextTick == TimeSpan.MinValue || t.NextTick < nextTick)
+                if (t.NextTick < nextTick)
                     nextTick = t.NextTick;
             }
 
@@ -91,10 +92,35 @@ namespace Avalonia.Wayland
 
         private int DispatchDisplay(int timeout)
         {
-            int ret;
             if (_platform.WlDisplay.PrepareRead() == -1)
                 return _platform.WlDisplay.DispatchPending();
 
+            var ret = FlushDisplay();
+            if (ret < 0 && Marshal.GetLastWin32Error() == (int)Errno.EPIPE)
+            {
+                _platform.WlDisplay.CancelRead();
+                return -1;
+            }
+
+            ret = PollDisplay(EpollEvents.EPOLLIN, timeout);
+            if (ret <= 0)
+            {
+                _platform.WlDisplay.CancelRead();
+                return ret;
+            }
+
+            if (_platform.WlDisplay.ReadEvents() == -1)
+            {
+                _platform.WlDisplay.CancelRead();
+                return -1;
+            }
+
+            return _platform.WlDisplay.DispatchPending();
+        }
+
+        private int FlushDisplay()
+        {
+            int ret;
             while (true)
             {
                 ret = _platform.WlDisplay.Flush();
@@ -106,29 +132,7 @@ namespace Avalonia.Wayland
                 return -1;
             }
 
-            if (ret < 0 && Marshal.GetLastWin32Error() == (int)Errno.EPIPE)
-            {
-                _platform.WlDisplay.CancelRead();
-                return -1;
-            }
-
-            switch (PollDisplay(EpollEvents.EPOLLIN, timeout))
-            {
-                case 0:
-                    _platform.WlDisplay.CancelRead();
-                    return 0;
-                case -1:
-                    _platform.WlDisplay.CancelRead();
-                    return -1;
-            }
-
-            if (_platform.WlDisplay.ReadEvents() == -1)
-            {
-                _platform.WlDisplay.CancelRead();
-                return -1;
-            }
-
-            return _platform.WlDisplay.DispatchPending();
+            return ret;
         }
 
         private unsafe int PollDisplay(EpollEvents events, int timeout)
