@@ -46,7 +46,6 @@ namespace Avalonia.Web.Blazor
         private GRGlInterface? _glInterface;
         private const SKColorType ColorType = SKColorType.Rgba8888;
 
-        private bool _initialised;
         private bool _useGL;
         private bool _inputElementFocused;
 
@@ -63,6 +62,8 @@ namespace Avalonia.Web.Blazor
                 _topLevel.Content = lifetime.MainView;
             }
         }
+
+        public bool KeyPreventDefault { get; set; }
 
         internal INativeControlHostImpl GetNativeControlHostImpl()
         {
@@ -204,12 +205,12 @@ namespace Avalonia.Web.Blazor
 
         private void OnKeyDown(KeyboardEventArgs e)
         {
-            _topLevelImpl.RawKeyboardEvent(RawKeyEventType.KeyDown, e.Code, e.Key, GetModifiers(e));
+            KeyPreventDefault = _topLevelImpl.RawKeyboardEvent(RawKeyEventType.KeyDown, e.Code, e.Key, GetModifiers(e));
         }
 
         private void OnKeyUp(KeyboardEventArgs e)
         {
-            _topLevelImpl.RawKeyboardEvent(RawKeyEventType.KeyUp, e.Code, e.Key, GetModifiers(e));
+            KeyPreventDefault = _topLevelImpl.RawKeyboardEvent(RawKeyEventType.KeyUp, e.Code, e.Key, GetModifiers(e));
         }
 
         private void OnFocus(FocusEventArgs e)
@@ -306,8 +307,6 @@ namespace Avalonia.Web.Blazor
                 }
                 
                 _interop.SetCanvasSize((int)(_canvasSize.Width * _dpi), (int)(_canvasSize.Height * _dpi));
-
-                _initialised = true;
 
                 Threading.Dispatcher.UIThread.Post(async () =>
                 {
