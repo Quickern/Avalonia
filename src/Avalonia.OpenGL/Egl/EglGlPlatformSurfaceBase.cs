@@ -24,7 +24,10 @@ namespace Avalonia.OpenGL.Egl
             _egl = egl;
         }
 
-        public abstract void Dispose();
+        public virtual void Dispose()
+        {
+            
+        }
 
         public abstract IGlPlatformSurfaceRenderingSession BeginDraw();
 
@@ -40,9 +43,9 @@ namespace Avalonia.OpenGL.Egl
                 egli.WaitClient();
                 egli.WaitGL();
                 egli.WaitNative(EglConsts.EGL_CORE_NATIVE_ENGINE);
-
+                
                 _egl.PrimaryContext.GlInterface.BindFramebuffer(GlConsts.GL_FRAMEBUFFER, 0);
-
+                
                 success = true;
                 return new Session(_egl.Display, _egl.PrimaryEglContext, surface, info,  restoreContext, onFinish, isYFlipped);
             }
@@ -52,8 +55,8 @@ namespace Avalonia.OpenGL.Egl
                     restoreContext.Dispose();
             }
         }
-
-        private class Session : IGlPlatformSurfaceRenderingSession
+        
+        class Session : IGlPlatformSurfaceRenderingSession
         {
             private readonly EglContext _context;
             private readonly EglSurface _glSurface;
@@ -65,7 +68,7 @@ namespace Avalonia.OpenGL.Egl
 
             public Session(EglDisplay display, EglContext context,
                 EglSurface glSurface, EglGlPlatformSurfaceBase.IEglWindowGlPlatformSurfaceInfo info,
-                IDisposable restoreContext, Action onFinish, bool isYFlipped)
+                 IDisposable restoreContext, Action onFinish, bool isYFlipped)
             {
                 IsYFlipped = isYFlipped;
                 _context = context;
