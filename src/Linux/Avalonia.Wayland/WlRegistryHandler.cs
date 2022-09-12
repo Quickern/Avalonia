@@ -58,10 +58,8 @@ namespace Avalonia.Wayland
             return global is null ? null : Bind(factory, version, global);
         }
 
-        public unsafe T? Bind<T>(IBindFactory<T> factory, int version, GlobalInfo global) where T : WlProxy
+        public T? Bind<T>(IBindFactory<T> factory, int version, GlobalInfo global) where T : WlProxy
         {
-            if (version > factory.GetInterface()->Version)
-                throw new ArgumentException($"Version {version} is not supported");
             var requestVersion = Math.Min(version, global.Version);
             return _registry.Bind(global.Name, factory, requestVersion);
         }
