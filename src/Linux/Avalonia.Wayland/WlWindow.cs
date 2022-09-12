@@ -15,11 +15,12 @@ using Avalonia.Utilities;
 using Avalonia.Wayland.Egl;
 using Avalonia.Wayland.Framebuffer;
 using NWayland.Protocols.Wayland;
+using NWayland.Protocols.XdgActivationV1;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents, XdgActivationTokenV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
@@ -158,7 +159,20 @@ namespace Avalonia.Wayland
 
         public abstract void Hide();
 
-        public void Activate() { }
+        public void Activate()
+        {
+            var activationToken = _platform.XdgActivation.GetActivationToken();
+            activationToken.Events = this;
+            var serial = _platform.WlInputDevice.UserActionDownSerial;
+            if (serial != 0)
+                activationToken.SetSerial(serial, _platform.WlSeat);
+            var focusedWindow = _platform.WlScreens.KeyboardFocus;
+            if (focusedWindow is not null)
+                activationToken.SetSurface(focusedWindow.WlSurface);
+            if (_platform.Options.AppId is not null)
+                activationToken.SetAppId(_platform.Options.AppId);
+            activationToken.Commit();
+        }
 
         public void SetTopmost(bool value) { }
 
@@ -213,6 +227,12 @@ namespace Avalonia.Wayland
             XdgSurface.AckConfigure(serial);
             if (_frameCallback is null)
                 Paint?.Invoke(new Rect(ClientSize));
+        }
+
+        public void OnDone(XdgActivationTokenV1 eventSender, string token)
+        {
+            eventSender.Dispose();
+            _platform.XdgActivation.Activate(token, WlSurface);
         }
 
         public virtual void Dispose()

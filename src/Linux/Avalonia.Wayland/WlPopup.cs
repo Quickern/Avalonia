@@ -33,6 +33,7 @@ namespace Avalonia.Wayland
                 _xdgPopup.Events = this;
                 _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.UserActionDownSerial);
                 WlSurface.Commit();
+                Activated?.Invoke();
             }
 
             base.Show(activate, isDialog);

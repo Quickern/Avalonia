@@ -13,6 +13,7 @@ using Avalonia.Wayland;
 using NWayland.Protocols.PointerGesturesUnstableV1;
 using NWayland.Protocols.TextInputUnstableV3;
 using NWayland.Protocols.Wayland;
+using NWayland.Protocols.XdgActivationV1;
 using NWayland.Protocols.XdgDecorationUnstableV1;
 using NWayland.Protocols.XdgForeignUnstableV2;
 using NWayland.Protocols.XdgShell;
@@ -34,6 +35,7 @@ namespace Avalonia.Wayland
             WlShm = WlRegistryHandler.BindRequiredInterface(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
             WlDataDeviceManager = WlRegistryHandler.BindRequiredInterface(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
             XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
+            XdgActivation = WlRegistryHandler.BindRequiredInterface(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             ZwpTextInput = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
@@ -42,7 +44,8 @@ namespace Avalonia.Wayland
             XdgWmBase.Events = this;
 
             var wlDataHandler = new WlDataHandler(this);
-            AvaloniaLocator.CurrentMutable.Bind<IWindowingPlatform>().ToConstant(this)
+            AvaloniaLocator.CurrentMutable
+                .Bind<IWindowingPlatform>().ToConstant(this)
                 .Bind<IPlatformThreadingInterface>().ToConstant(new WlPlatformThreading(this))
                 .Bind<IRenderTimer>().ToConstant(new DefaultRenderTimer(60))
                 .Bind<IRenderLoop>().ToConstant(new RenderLoop())
@@ -72,7 +75,9 @@ namespace Avalonia.Wayland
                 const int EGL_PLATFORM_WAYLAND_KHR = 0x31D8;
                 gl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
                 if (gl is not null)
-                    AvaloniaLocator.CurrentMutable.Bind<IPlatformOpenGlInterface>().ToConstant(gl).Bind<IPlatformGpu>().ToConstant(gl);
+                    AvaloniaLocator.CurrentMutable
+                        .Bind<IPlatformOpenGlInterface>().ToConstant(gl)
+                        .Bind<IPlatformGpu>().ToConstant(gl);
             }
 
             if (options.UseCompositor)
@@ -96,6 +101,8 @@ namespace Avalonia.Wayland
         internal WlDataDeviceManager WlDataDeviceManager { get; }
 
         internal XdgWmBase XdgWmBase { get; }
+
+        internal XdgActivationV1 XdgActivation { get; }
 
         internal ZxdgDecorationManagerV1? ZxdgDecorationManager { get; }
 
@@ -138,6 +145,7 @@ namespace Avalonia.Wayland
             WlScreens.Dispose();
             WlSeat.Dispose();
             WlShm.Dispose();
+            XdgActivation.Dispose();
             XdgWmBase.Dispose();
             WlCompositor.Dispose();
             WlRegistryHandler.Dispose();
