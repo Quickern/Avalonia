@@ -29,8 +29,6 @@ namespace Avalonia.LinuxFramebuffer.Input.LibInput
             new Thread(()=>InputThread(ctx)).Start();
         }
 
-        
-        
         private unsafe void InputThread(IntPtr ctx)
         {
             var fd = libinput_get_fd(ctx);
@@ -143,8 +141,6 @@ namespace Avalonia.LinuxFramebuffer.Input.LibInput
             }
             
         }
-            
-        
 
         public void Initialize(IScreenInfoProvider screen, Action<RawInputEventArgs> onInput)
         {
