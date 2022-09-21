@@ -155,7 +155,12 @@ namespace Avalonia.Wayland
             TransparencyLevelChanged?.Invoke(transparencyLevel);
         }
 
-        public virtual void Show(bool activate, bool isDialog) => Paint?.Invoke(Rect.Empty);
+        public virtual void Show(bool activate, bool isDialog)
+        {
+            Paint?.Invoke(Rect.Empty);
+            if (activate)
+                Activate();
+        }
 
         public abstract void Hide();
 

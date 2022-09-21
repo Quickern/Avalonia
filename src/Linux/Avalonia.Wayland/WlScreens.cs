@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-
 using Avalonia.Platform;
 using NWayland.Protocols.Wayland;
 
@@ -63,20 +61,26 @@ namespace Avalonia.Wayland
 
         internal void SetKeyboardFocus(WlSurface? surface)
         {
-            if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
-                KeyboardFocus = window;
+            if (surface is null)
+                KeyboardFocus = null;
+            else
+                KeyboardFocus = _wlWindows.TryGetValue(surface, out var window) ? window : null;
         }
 
         internal void SetPointerFocus(WlSurface? surface)
         {
-            if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
-                PointerFocus = window;
+            if (surface is null)
+                PointerFocus = null;
+            else
+                PointerFocus = _wlWindows.TryGetValue(surface, out var window) ? window : null;
         }
 
         internal void SetTouchFocus(WlSurface? surface)
         {
-            if (surface is not null && _wlWindows.TryGetValue(surface, out var window))
-                TouchFocus = window;
+            if (surface is null)
+                TouchFocus = null;
+            else
+                TouchFocus = _wlWindows.TryGetValue(surface, out var window) ? window : null;
         }
 
         private void OnGlobalAdded(WlRegistryHandler.GlobalInfo globalInfo)

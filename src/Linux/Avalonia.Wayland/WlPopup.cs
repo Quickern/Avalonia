@@ -13,6 +13,7 @@ namespace Avalonia.Wayland
 
         private XdgPopup? _xdgPopup;
         private uint _repositionToken;
+        private bool _isLightDismissEnabled;
 
         internal WlPopup(AvaloniaWaylandPlatform platform, WlWindow parent) : base(platform)
         {
@@ -25,15 +26,19 @@ namespace Avalonia.Wayland
 
         public void SetWindowManagerAddShadowHint(bool enabled) { }
 
+        public void SetIsLightDismissEnabledHint(bool enabled) => _isLightDismissEnabled = enabled;
+
         public override void Show(bool activate, bool isDialog)
         {
             if (_xdgPopup is null)
             {
                 _xdgPopup = XdgSurface.GetPopup(Parent!.XdgSurface, _xdgPositioner);
                 _xdgPopup.Events = this;
-                _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.UserActionDownSerial);
-                WlSurface.Commit();
-                Activated?.Invoke();
+                if (_isLightDismissEnabled)
+                {
+                    _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.UserActionDownSerial);
+                    WlSurface.Commit();
+                }
             }
 
             base.Show(activate, isDialog);

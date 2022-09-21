@@ -165,6 +165,11 @@ namespace Avalonia.Win32
             }
         }
 
+        public void SetIsLightDismissEnabledHint(bool enabled)
+        {
+
+        }
+
         public IPopupPositioner PopupPositioner { get; }
     }
 }

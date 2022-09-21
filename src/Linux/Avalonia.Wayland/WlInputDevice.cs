@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
@@ -17,6 +18,7 @@ namespace Avalonia.Wayland
         private readonly IPlatformThreadingInterface _platformThreading;
         private readonly ICursorFactory _cursorFactory;
         private readonly WlSurface _pointerSurface;
+        private readonly Dictionary<WlTouch, int> _touchIds;
 
         private WlPointer? _wlPointer;
         private WlKeyboard? _wlKeyboard;
@@ -30,7 +32,6 @@ namespace Avalonia.Wayland
         private int _currentCursorImageIndex;
         private IDisposable? _pointerTimer;
 
-        private int _touchId;
         private Point _touchPosition;
 
         private IntPtr _xkbContext;
@@ -59,6 +60,7 @@ namespace Avalonia.Wayland
             _cursorFactory = AvaloniaLocator.Current.GetRequiredService<ICursorFactory>();
             _platform.WlSeat.Events = this;
             _pointerSurface = platform.WlCompositor.CreateSurface();
+            _touchIds = new Dictionary<WlTouch, int>();
         }
 
         public MouseDevice? MouseDevice { get; private set; }
@@ -124,20 +126,19 @@ namespace Avalonia.Wayland
 
         public void OnEnter(WlPointer eventSender, uint serial, WlSurface surface, WlFixed surfaceX, WlFixed surfaceY)
         {
+            Serial = serial;
+            PointerSurfaceSerial = serial;
             _platform.WlScreens.SetPointerFocus(surface);
             var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
-            PointerSurfaceSerial = serial;
             _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
             var args = new RawPointerEventArgs(MouseDevice!, 0, window.InputRoot, RawPointerEventType.Move, _pointerPosition, RawInputModifiers);
             window.Input?.Invoke(args);
         }
 
-        public void OnLeave(WlPointer eventSender, uint serial, WlSurface? surface)
+        public void OnLeave(WlPointer eventSender, uint serial, WlSurface surface)
         {
-            if (surface is null)
-                return;
             var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
@@ -145,6 +146,7 @@ namespace Avalonia.Wayland
             PointerSurfaceSerial = serial;
             var args = new RawPointerEventArgs(MouseDevice!, 0, window.InputRoot, RawPointerEventType.LeaveWindow, _pointerPosition, RawInputModifiers);
             window.Input?.Invoke(args);
+            _platform.WlScreens.SetPointerFocus(null);
         }
 
         public void OnMotion(WlPointer eventSender, uint time, WlFixed surfaceX, WlFixed surfaceY)
@@ -159,55 +161,55 @@ namespace Avalonia.Wayland
 
         public void OnButton(WlPointer eventSender, uint serial, uint time, uint button, WlPointer.ButtonStateEnum state)
         {
+            Serial = serial;
             var window = _platform.WlScreens.PointerFocus;
             if (window?.InputRoot is null)
                 return;
-            Serial = serial;
             RawPointerEventType type;
             switch (button)
             {
-                case (uint)EvKey.BTN_LEFT when state is WlPointer.ButtonStateEnum.Pressed:
+                case (uint)EvKey.BTN_LEFT when state == WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.LeftButtonDown;
                     RawInputModifiers |= RawInputModifiers.LeftMouseButton;
                     UserActionDownSerial = serial;
                     break;
-                case (uint)EvKey.BTN_LEFT when state is WlPointer.ButtonStateEnum.Released:
+                case (uint)EvKey.BTN_LEFT when state == WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.LeftButtonUp;
                     RawInputModifiers &= ~RawInputModifiers.LeftMouseButton;
                     break;
-                case (uint)EvKey.BTN_RIGHT when state is WlPointer.ButtonStateEnum.Pressed:
+                case (uint)EvKey.BTN_RIGHT when state == WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.RightButtonDown;
                     RawInputModifiers |= RawInputModifiers.RightMouseButton;
                     UserActionDownSerial = serial;
                     break;
-                case (uint)EvKey.BTN_RIGHT when state is WlPointer.ButtonStateEnum.Released:
+                case (uint)EvKey.BTN_RIGHT when state == WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.RightButtonUp;
                     RawInputModifiers &= ~RawInputModifiers.RightMouseButton;
                     break;
-                case (uint)EvKey.BTN_MIDDLE when state is WlPointer.ButtonStateEnum.Pressed:
+                case (uint)EvKey.BTN_MIDDLE when state == WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.MiddleButtonDown;
                     RawInputModifiers |= RawInputModifiers.MiddleMouseButton;
                     UserActionDownSerial = serial;
                     break;
-                case (uint)EvKey.BTN_MIDDLE when state is WlPointer.ButtonStateEnum.Released:
+                case (uint)EvKey.BTN_MIDDLE when state == WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.MiddleButtonUp;
                     RawInputModifiers &= ~RawInputModifiers.MiddleMouseButton;
                     break;
-                case (uint)EvKey.BTN_SIDE when state is WlPointer.ButtonStateEnum.Pressed:
+                case (uint)EvKey.BTN_SIDE when state == WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.XButton2Down;
                     RawInputModifiers |= RawInputModifiers.XButton2MouseButton;
                     UserActionDownSerial = serial;
                     break;
-                case (uint)EvKey.BTN_SIDE when state is WlPointer.ButtonStateEnum.Released:
+                case (uint)EvKey.BTN_SIDE when state == WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.XButton2Up;
                     RawInputModifiers &= ~RawInputModifiers.XButton2MouseButton;
                     break;
-                case (uint)EvKey.BTN_EXTRA when state is WlPointer.ButtonStateEnum.Pressed:
+                case (uint)EvKey.BTN_EXTRA when state == WlPointer.ButtonStateEnum.Pressed:
                     type = RawPointerEventType.XButton1Down;
                     RawInputModifiers |= RawInputModifiers.XButton1MouseButton;
                     UserActionDownSerial = serial;
                     break;
-                case (uint)EvKey.BTN_EXTRA when state is WlPointer.ButtonStateEnum.Released:
+                case (uint)EvKey.BTN_EXTRA when state == WlPointer.ButtonStateEnum.Released:
                     type = RawPointerEventType.XButton1Up;
                     RawInputModifiers &= ~RawInputModifiers.XButton1MouseButton;
                     UserActionDownSerial = serial;
@@ -301,6 +303,7 @@ namespace Avalonia.Wayland
         public void OnLeave(WlKeyboard eventSender, uint serial, WlSurface surface)
         {
             Serial = serial;
+            _platform.WlScreens.SetKeyboardFocus(null);
         }
 
         public void OnKey(WlKeyboard eventSender, uint serial, uint time, uint key, WlKeyboard.KeyStateEnum state)
@@ -376,7 +379,7 @@ namespace Avalonia.Wayland
         {
             Serial = serial;
             UserActionDownSerial = serial;
-            _touchId = id;
+            _touchIds.Add(eventSender, id);
             _platform.WlScreens.SetTouchFocus(surface);
             var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null)
@@ -389,7 +392,7 @@ namespace Avalonia.Wayland
         public void OnUp(WlTouch eventSender, uint serial, uint time, int id)
         {
             Serial = serial;
-            _touchId = id;
+            _touchIds.Remove(eventSender);
             var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
@@ -399,7 +402,6 @@ namespace Avalonia.Wayland
 
         public void OnMotion(WlTouch eventSender, uint time, int id, WlFixed x, WlFixed y)
         {
-            _touchId = id;
             var window = _platform.WlScreens.TouchFocus;
             if (window?.Input is null || window.InputRoot is null)
                 return;
@@ -413,11 +415,10 @@ namespace Avalonia.Wayland
         public void OnCancel(WlTouch eventSender)
         {
             var window = _platform.WlScreens.TouchFocus;
-            if (window?.Input is null || window.InputRoot is null || _touchId == 0)
+            if (window?.Input is null || window.InputRoot is null || !_touchIds.TryGetValue(eventSender, out var id))
                 return;
-            var args = new RawTouchEventArgs(TouchDevice!, 0, window.InputRoot, RawPointerEventType.TouchCancel, _touchPosition, RawInputModifiers, _touchId);
+            var args = new RawTouchEventArgs(TouchDevice!, 0, window.InputRoot, RawPointerEventType.TouchCancel, _touchPosition, RawInputModifiers, id);
             window.Input.Invoke(args);
-            _touchId = 0;
         }
 
         public void OnShape(WlTouch eventSender, int id, WlFixed major, WlFixed minor) { }
@@ -444,12 +445,9 @@ namespace Avalonia.Wayland
             }
 
             var rad = Math.PI / 180 * (double)rotation;
-            if (rad != 0)
-            {
-                var deltaRotation = new Vector(Math.Cos(rad), Math.Sin(rad));
-                var rotateArgs = new RawPointerGestureEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Rotate, _pointerPosition, deltaRotation, RawInputModifiers);
-                window.Input.Invoke(rotateArgs);
-            }
+            var deltaRotation = new Vector(Math.Cos(rad), Math.Sin(rad));
+            var rotateArgs = new RawPointerGestureEventArgs(MouseDevice!, time, window.InputRoot, RawPointerEventType.Rotate, _pointerPosition, deltaRotation, RawInputModifiers);
+            window.Input.Invoke(rotateArgs);
         }
 
         public void OnEnd(ZwpPointerGesturePinchV1 eventSender, uint serial, uint time, int cancelled)
