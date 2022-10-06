@@ -24,7 +24,6 @@ namespace Avalonia.Wayland
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
-        private readonly WlRegion _wlRegion;
         private readonly IntPtr _eglWindow;
 
         private WlCallback? _frameCallback;
@@ -32,7 +31,6 @@ namespace Avalonia.Wayland
         protected WlWindow(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
-            _wlRegion = platform.WlCompositor.CreateRegion();
             WlSurface = platform.WlCompositor.CreateSurface();
             WlSurface.Events = this;
             XdgSurface = platform.XdgWmBase.GetXdgSurface(WlSurface);
@@ -150,34 +148,26 @@ namespace Avalonia.Wayland
         {
             if (transparencyLevel == TransparencyLevel)
                 return;
-            WlSurface.SetOpaqueRegion(transparencyLevel == WindowTransparencyLevel.None ? _wlRegion : null);
+            if (transparencyLevel == WindowTransparencyLevel.None)
+            {
+                using var region = _platform.WlCompositor.CreateRegion();
+                region.Add(0, 0, (int)ClientSize.Width, (int)ClientSize.Height);
+                WlSurface.SetOpaqueRegion(region);
+            }
+            else
+            {
+                WlSurface.SetOpaqueRegion(null);
+            }
+
             TransparencyLevel = transparencyLevel;
             TransparencyLevelChanged?.Invoke(transparencyLevel);
         }
 
-        public virtual void Show(bool activate, bool isDialog)
-        {
-            Paint?.Invoke(Rect.Empty);
-            if (activate)
-                Activate();
-        }
+        public virtual void Show(bool activate, bool isDialog) => Paint?.Invoke(Rect.Empty);
 
         public abstract void Hide();
 
-        public void Activate()
-        {
-            var activationToken = _platform.XdgActivation.GetActivationToken();
-            activationToken.Events = this;
-            var serial = _platform.WlInputDevice.UserActionDownSerial;
-            if (serial != 0)
-                activationToken.SetSerial(serial, _platform.WlSeat);
-            var focusedWindow = _platform.WlScreens.KeyboardFocus;
-            if (focusedWindow is not null)
-                activationToken.SetSurface(focusedWindow.WlSurface);
-            if (_platform.Options.AppId is not null)
-                activationToken.SetAppId(_platform.Options.AppId);
-            activationToken.Commit();
-        }
+        public void Activate() { }
 
         public void SetTopmost(bool value) { }
 
@@ -189,8 +179,6 @@ namespace Avalonia.Wayland
             var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
             if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
                 return;
-            _wlRegion.Subtract(0, 0, (int)ClientSize.Width, (int)ClientSize.Height);
-            _wlRegion.Add(0, 0, PendingSize.Width, PendingSize.Height);
             ClientSize = pendingSize;
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
@@ -245,7 +233,6 @@ namespace Avalonia.Wayland
             _platform.WlScreens.RemoveWindow(this);
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
-            _wlRegion.Dispose();
             _wlFramebufferSurface.Dispose();
             XdgSurface.Dispose();
             WlSurface.Dispose();

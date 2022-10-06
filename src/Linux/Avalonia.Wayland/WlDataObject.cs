@@ -12,7 +12,9 @@ namespace Avalonia.Wayland
     internal sealed class WlDataObject : IDataObject, IDisposable, WlDataOffer.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
-        private readonly DataObject _cache;
+        private readonly Dictionary<string, object?> _cache;
+
+        private const int BufferSize = 1024;
 
         public WlDataObject(AvaloniaWaylandPlatform platform, WlDataOffer wlDataOffer)
         {
@@ -20,7 +22,7 @@ namespace Avalonia.Wayland
             WlDataOffer = wlDataOffer;
             WlDataOffer.Events = this;
             MimeTypes = new List<string>();
-            _cache = new DataObject();
+            _cache = new Dictionary<string, object?>();
         }
 
         internal WlDataOffer WlDataOffer { get; }
@@ -60,26 +62,26 @@ namespace Avalonia.Wayland
 
         public string? GetText()
         {
-            if (_cache.GetText() is { } text)
-                return text;
+            if (_cache.TryGetValue(DataFormats.Text, out var text))
+                return text as string;
             var mimeType = MimeTypes.FirstOrDefault(static x => x is Wayland.MimeTypes.Text) ?? MimeTypes.FirstOrDefault(static x => x is Wayland.MimeTypes.TextUtf8);
             if (mimeType is null)
                 return null;
             var fd = Receive(mimeType);
             var result = fd < 0 ? null : ReceiveText(fd);
-            _cache.Set(DataFormats.Text, result);
+            _cache.Add(DataFormats.Text, result);
             return result;
         }
 
         public IEnumerable<string>? GetFileNames()
         {
-            if (_cache.GetFileNames() is { } fileNames)
-                return fileNames;
+            if (_cache.TryGetValue(DataFormats.FileNames, out var fileNames))
+                return fileNames as IEnumerable<string>;
             if (!MimeTypes.Contains(Wayland.MimeTypes.UriList))
                 return null;
             var fd = Receive(Wayland.MimeTypes.UriList);
             var result = fd < 0 ? null : ReceiveText(fd).Split('\n');
-            _cache.Set(DataFormats.FileNames, result);
+            _cache.Add(DataFormats.FileNames, result);
             return result;
         }
 
@@ -93,7 +95,7 @@ namespace Avalonia.Wayland
                     return GetFileNames();
             }
 
-            if (_cache.Get(dataFormat) is { } obj)
+            if (_cache.TryGetValue(dataFormat, out var obj))
                 return obj;
 
             if (!MimeTypes.Contains(dataFormat))
@@ -103,22 +105,34 @@ namespace Avalonia.Wayland
             if (fd < 0)
                 return null;
 
-            var buffer = new byte[1024];
+#if NET5_0_OR_GREATER
+            var buffer = stackalloc byte[BufferSize];
+            var ms = new MemoryStream();
+            while (true)
+            {
+                var read = LibC.read(fd, (IntPtr)buffer, BufferSize);
+                if (read <= 0)
+                    break;
+                ms.Write(new ReadOnlySpan<byte>(buffer, BufferSize));
+            }
+#else
+            var buffer = new byte[BufferSize];
             var ms = new MemoryStream();
             fixed (byte* ptr = buffer)
             {
                 while (true)
                 {
-                    var read = LibC.read(fd, (IntPtr)ptr, 1024);
+                    var read = LibC.read(fd, (IntPtr)ptr, BufferSize);
                     if (read <= 0)
                         break;
                     ms.Write(buffer, 0, read);
                 }
             }
+#endif
 
             LibC.close(fd);
             var result = ms.ToArray();
-            _cache.Set(dataFormat, result);
+            _cache.Add(dataFormat, result);
             return result;
         }
 
@@ -147,17 +161,14 @@ namespace Avalonia.Wayland
 
         private static unsafe string ReceiveText(int fd)
         {
-            Span<byte> buffer = stackalloc byte[1024];
+            var buffer = stackalloc byte[BufferSize];
             var sb = new StringBuilder();
-            fixed (byte* ptr = buffer)
+            while (true)
             {
-                while (true)
-                {
-                    var read = LibC.read(fd, (IntPtr)ptr, 1024);
-                    if (read <= 0)
-                        break;
-                    sb.Append(Encoding.UTF8.GetString(ptr, read));
-                }
+                var read = LibC.read(fd, (IntPtr)buffer, BufferSize);
+                if (read <= 0)
+                    break;
+                sb.Append(Encoding.UTF8.GetString(buffer, read));
             }
 
             LibC.close(fd);

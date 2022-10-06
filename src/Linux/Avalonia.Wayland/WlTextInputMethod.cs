@@ -45,7 +45,6 @@ namespace Avalonia.Wayland
 
         public void Reset()
         {
-            _zwpTextInput.Disable();
             _zwpTextInput.Enable();
             _zwpTextInput.Commit();
         }
@@ -56,7 +55,7 @@ namespace Avalonia.Wayland
 
         public void OnPreeditString(ZwpTextInputV3 eventSender, string? text, int cursorBegin, int cursorEnd)
         {
-            if (_client?.SupportsPreedit is not true || text is null)
+            if (_client?.SupportsPreedit != true)
                 return;
             _client?.SetPreeditText(text);
             _zwpTextInput.Commit();
