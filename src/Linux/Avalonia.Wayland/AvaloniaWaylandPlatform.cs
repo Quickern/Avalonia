@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.FreeDesktop;
@@ -73,7 +75,7 @@ namespace Avalonia.Wayland
             if (options.UseGpu)
             {
                 const int EGL_PLATFORM_WAYLAND_KHR = 0x31D8;
-                gl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), false, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
+                gl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), true, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
                 if (gl is not null)
                     AvaloniaLocator.CurrentMutable
                         .Bind<IPlatformOpenGlInterface>().ToConstant(gl)
