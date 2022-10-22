@@ -17,16 +17,27 @@ namespace Avalonia.Wayland
         private readonly Stopwatch _clock;
         private readonly List<ManagedThreadingTimer> _timers;
         private readonly List<ManagedThreadingTimer> _readyTimers;
+        private readonly object _lock;
         private readonly int _displayFd;
+        private readonly int _sigRead;
+        private readonly int _sigWrite;
 
-        public WlPlatformThreading(AvaloniaWaylandPlatform platform)
+        private bool _signaled;
+        private DispatcherPriority _signaledPriority;
+
+        public unsafe WlPlatformThreading(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             _mainThread = Thread.CurrentThread;
             _clock = Stopwatch.StartNew();
             _timers = new List<ManagedThreadingTimer>();
             _readyTimers = new List<ManagedThreadingTimer>();
+            _lock = new object();
             _displayFd = platform.WlDisplay.GetFd();
+            var fds = stackalloc int[2];
+            LibC.pipe2(fds, FileDescriptorFlags.O_NONBLOCK);
+            _sigRead = fds[0];
+            _sigWrite = fds[1];
         }
 
         public event Action<DispatcherPriority?>? Signaled;
@@ -62,7 +73,19 @@ namespace Avalonia.Wayland
             });
         }
 
-        public void Signal(DispatcherPriority priority) { }
+        public unsafe void Signal(DispatcherPriority priority)
+        {
+            lock (_lock)
+            {
+                if (priority > _signaledPriority)
+                    _signaledPriority = priority;
+                if (_signaled)
+                    return;
+                _signaled = true;
+                var buf = 0;
+                LibC.write(_sigWrite, new IntPtr(&buf), 1);
+            }
+        }
 
         private TimeSpan DispatchTimers()
         {
@@ -138,11 +161,34 @@ namespace Avalonia.Wayland
         private unsafe int PollDisplay(EpollEvents events, int timeout)
         {
             int ret;
-            var pollFd = new pollfd { fd = _displayFd, events = (short)events };
+            var pollFds = stackalloc pollfd[]
+            {
+                new pollfd { fd = _displayFd, events = (short)events },
+                new pollfd { fd = _sigRead, events = (short)EpollEvents.EPOLLIN }
+            };
+
             do
-                ret = LibC.poll(&pollFd, new IntPtr(1), timeout);
+                ret = LibC.poll(pollFds, 2, timeout);
             while (ret == -1 && Marshal.GetLastWin32Error() == (int)Errno.EINTR);
-            return ret;
+            return CheckSignaled() ? 0 : ret;
+        }
+
+        private unsafe bool CheckSignaled()
+        {
+            var buffer = 0;
+            while (LibC.read(_sigRead, new IntPtr(&buffer), 4) > 0) { }
+            DispatcherPriority priority;
+            lock (_lock)
+            {
+                if (!_signaled)
+                    return false;
+                _signaled = false;
+                priority = _signaledPriority;
+                _signaledPriority = DispatcherPriority.MinValue;
+            }
+
+            Signaled?.Invoke(priority);
+            return true;
         }
     }
 }

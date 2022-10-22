@@ -52,7 +52,7 @@ namespace Avalonia.FreeDesktop
         public static extern int fcntl(int fd, FileSealCommand cmd, FileSeals flags);
 
         [DllImport(C, SetLastError = true)]
-        public static extern unsafe int poll(pollfd* fds, IntPtr nfds, int timeout);
+        public static extern unsafe int poll(pollfd* fds, int nfds, int timeout);
 
         [DllImport(C, SetLastError = true)]
         public static extern int epoll_create1(int size);
