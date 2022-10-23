@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.FreeDesktop;

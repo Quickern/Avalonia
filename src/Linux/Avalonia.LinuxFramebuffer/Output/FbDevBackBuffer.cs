@@ -48,7 +48,7 @@ namespace Avalonia.LinuxFramebuffer.Output
                         try
                         {
                             LibC.ioctl(_fb, FbIoCtl.FBIO_WAITFORVSYNC, null);
-                            LibC.memcpy(_targetAddress, Address, new IntPtr(RowBytes * Size.Height));
+                            LibC.memcpy(_targetAddress, Address, (nuint)(RowBytes * Size.Height));
                         }
                         finally
                         {

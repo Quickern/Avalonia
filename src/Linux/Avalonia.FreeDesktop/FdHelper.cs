@@ -4,7 +4,7 @@ namespace Avalonia.FreeDesktop
 {
     internal static class FdHelper
     {
-        public static int CreateAnonymousFile(int size, string name)
+        public static int CreateAnonymousFile(long size, string name)
         {
             var fd = LibC.memfd_create(name, MemoryFileCreation.MFD_CLOEXEC | MemoryFileCreation.MFD_ALLOW_SEALING);
             if (fd == -1)
@@ -13,7 +13,7 @@ namespace Avalonia.FreeDesktop
             return ResizeFd(fd, size);
         }
 
-        public static int ResizeFd(int fd, int size)
+        public static int ResizeFd(int fd, long size)
         {
             int ret;
             do

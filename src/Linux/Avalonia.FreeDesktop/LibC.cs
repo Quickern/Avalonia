@@ -15,7 +15,7 @@ namespace Avalonia.FreeDesktop
                                             [MarshalAs(UnmanagedType.LPArray)] byte[] buffer,
                                             long len);
 
-        [DllImport(C, SetLastError = true)]
+        [DllImport(C, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern int open(string pathname, int flags, int mode);
 
         [DllImport(C, SetLastError = true)]
@@ -40,19 +40,19 @@ namespace Avalonia.FreeDesktop
         public static extern int munmap(IntPtr addr, IntPtr length);
 
         [DllImport(C, SetLastError = true)]
-        public static extern int memcpy(IntPtr dest, IntPtr src, IntPtr length);
+        public static extern int memcpy(IntPtr dest, IntPtr src, nuint length);
 
-        [DllImport(C, SetLastError = true)]
+        [DllImport(C, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern int memfd_create(string name, MemoryFileCreation flags);
 
         [DllImport(C, SetLastError = true)]
-        public static extern int ftruncate(int fd, int size);
+        public static extern int ftruncate(int fd, long size);
 
         [DllImport(C, SetLastError = true)]
         public static extern int fcntl(int fd, FileSealCommand cmd, FileSeals flags);
 
         [DllImport(C, SetLastError = true)]
-        public static extern unsafe int poll(pollfd* fds, int nfds, int timeout);
+        public static extern unsafe int poll(pollfd* fds, nuint nfds, int timeout);
 
         [DllImport(C, SetLastError = true)]
         public static extern int epoll_create1(int size);
@@ -172,7 +172,7 @@ namespace Avalonia.FreeDesktop
     {
         public int   fd;         /* file descriptor */
         public short events;     /* requested events */
-        public short revents;    /* returned events */
+        public readonly short revents;    /* returned events */
     }
 
     [StructLayout(LayoutKind.Explicit)]
