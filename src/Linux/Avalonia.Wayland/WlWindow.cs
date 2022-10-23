@@ -15,12 +15,11 @@ using Avalonia.Utilities;
 using Avalonia.Wayland.Egl;
 using Avalonia.Wayland.Framebuffer;
 using NWayland.Protocols.Wayland;
-using NWayland.Protocols.XdgActivationV1;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents, XdgActivationTokenV1.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
@@ -64,7 +63,7 @@ namespace Avalonia.Wayland
 
         public ITextInputMethodImpl? TextInputMethod { get; }
 
-        public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.PixelDensity)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
+        public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.Scaling)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
 
         public Size ClientSize { get; private set; }
 
@@ -189,9 +188,9 @@ namespace Avalonia.Wayland
         {
             WlOutput = output;
             var screen = _platform.WlScreens.ScreenFromOutput(output);
-            if (MathUtilities.AreClose(screen.PixelDensity, RenderScaling))
+            if (MathUtilities.AreClose(screen.Scaling, RenderScaling))
                 return;
-            RenderScaling = screen.PixelDensity;
+            RenderScaling = screen.Scaling;
             ScalingChanged?.Invoke(RenderScaling);
             WlSurface.SetBufferScale((int)RenderScaling);
         }
@@ -220,12 +219,6 @@ namespace Avalonia.Wayland
             XdgSurface.AckConfigure(serial);
             if (_frameCallback is null)
                 Paint?.Invoke(new Rect(ClientSize));
-        }
-
-        public void OnDone(XdgActivationTokenV1 eventSender, string token)
-        {
-            eventSender.Dispose();
-            _platform.XdgActivation.Activate(token, WlSurface);
         }
 
         public virtual void Dispose()
