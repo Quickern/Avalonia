@@ -36,7 +36,11 @@ namespace Avalonia.Wayland.Egl
                 _currentSize = info.Size;
             }
 
-            public override void Dispose() => _glSurface.Dispose();
+            public override void Dispose()
+            {
+                _glSurface.Dispose();
+                base.Dispose();
+            }
 
             public override IGlPlatformSurfaceRenderingSession BeginDraw()
             {
