@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+
 using Avalonia.Platform;
 using NWayland.Protocols.Wayland;
 
@@ -22,7 +24,7 @@ namespace Avalonia.Wayland
 
         public int ScreenCount => _allScreens.Count;
 
-        public IReadOnlyList<Screen> AllScreens => _allScreens;
+        public IReadOnlyList<Screen> AllScreens => _allScreens.Select(static x => x.ToScreen()).ToList();
 
         public WlWindow? KeyboardFocus { get; private set; }
 
@@ -44,7 +46,7 @@ namespace Avalonia.Wayland
                 wlScreen.Dispose();
         }
 
-        internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput];
+        internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput].ToScreen();
 
         internal void AddWindow(WlWindow window) => _wlWindows.Add(window.WlSurface, window);
 
@@ -96,9 +98,7 @@ namespace Avalonia.Wayland
 
         private void OnGlobalRemoved(WlRegistryHandler.GlobalInfo globalInfo)
         {
-            if (globalInfo.Interface is not WlOutput.InterfaceName)
-                return;
-            if (!_wlScreens.TryGetValue(globalInfo.Name, out var wlScreen))
+            if (globalInfo.Interface is not WlOutput.InterfaceName || !_wlScreens.TryGetValue(globalInfo.Name, out var wlScreen))
                 return;
             _wlScreens.Remove(globalInfo.Name);
             _wlOutputs.Remove(wlScreen.WlOutput);
@@ -106,8 +106,13 @@ namespace Avalonia.Wayland
             wlScreen.Dispose();
         }
 
-        private sealed class WlScreen : Screen, WlOutput.IEvents, IDisposable
+        private sealed class WlScreen : WlOutput.IEvents, IDisposable
         {
+            private PixelRect _bounds;
+            private double _scaling;
+            private bool _isPreferred;
+            private Screen? _screen;
+
             public WlScreen(WlOutput wlOutput)
             {
                 WlOutput = wlOutput;
@@ -116,19 +121,24 @@ namespace Avalonia.Wayland
 
             public WlOutput WlOutput { get; }
 
+            public Screen ToScreen() => _screen!;
+
             public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform)
-                => Bounds = WorkingArea = new PixelRect(x, y, Bounds.Width, Bounds.Height);
+                => _bounds = new PixelRect(x, y, physicalWidth, physicalHeight);
 
             public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
-                => Bounds = WorkingArea = new PixelRect(Bounds.X, Bounds.Y, width, height);
+            {
+                _isPreferred = flags == WlOutput.ModeEnum.Preferred;
+                _bounds = new PixelRect(_bounds.X, _bounds.Y, width, height);
+            }
 
-            public void OnScale(WlOutput eventSender, int factor) => PixelDensity = factor;
+            public void OnScale(WlOutput eventSender, int factor) => _scaling = factor;
 
             public void OnName(WlOutput eventSender, string name) { }
 
             public void OnDescription(WlOutput eventSender, string description) { }
 
-            public void OnDone(WlOutput eventSender) { }
+            public void OnDone(WlOutput eventSender) => _screen = new Screen(_scaling, _bounds, _bounds, _isPreferred);
 
             public void Dispose() => WlOutput.Dispose();
         }
