@@ -108,9 +108,9 @@ namespace Avalonia.Wayland
 
         private sealed class WlScreen : WlOutput.IEvents, IDisposable
         {
-            private PixelRect _bounds;
+            private PixelPoint _position;
+            private PixelSize _size;
             private double _scaling;
-            private bool _isPreferred;
             private Screen? _screen;
 
             public WlScreen(WlOutput wlOutput)
@@ -123,13 +123,14 @@ namespace Avalonia.Wayland
 
             public Screen ToScreen() => _screen!;
 
-            public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform)
-                => _bounds = new PixelRect(x, y, physicalWidth, physicalHeight);
+            public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel,
+                string make, string model, WlOutput.TransformEnum transform) => _position = new PixelPoint(x, y);
 
             public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
             {
-                _isPreferred = flags == WlOutput.ModeEnum.Preferred;
-                _bounds = new PixelRect(_bounds.X, _bounds.Y, width, height);
+                if (flags != WlOutput.ModeEnum.Current)
+                    return;
+                _size = new PixelSize(width, height);
             }
 
             public void OnScale(WlOutput eventSender, int factor) => _scaling = factor;
@@ -138,7 +139,11 @@ namespace Avalonia.Wayland
 
             public void OnDescription(WlOutput eventSender, string description) { }
 
-            public void OnDone(WlOutput eventSender) => _screen = new Screen(_scaling, _bounds, _bounds, _isPreferred);
+            public void OnDone(WlOutput eventSender)
+            {
+                var bounds = new PixelRect(_position, _size);
+                _screen = new Screen(_scaling, bounds, bounds, true);
+            }
 
             public void Dispose() => WlOutput.Dispose();
         }
