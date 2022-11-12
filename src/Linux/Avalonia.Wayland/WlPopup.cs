@@ -48,13 +48,14 @@ namespace Avalonia.Wayland
 
         public void Update(PopupPositionerParameters parameters)
         {
-            Resize(parameters.Size);
+            var size = new PixelSize((int)Math.Max(1, parameters.Size.Width), (int)Math.Max(1, parameters.Size.Height));
+            Resize(new Size(size.Width, size.Height));
             _xdgPositioner.SetReactive();
             _xdgPositioner.SetAnchor(ParsePopupAnchor(parameters.Anchor));
             _xdgPositioner.SetGravity(ParsePopupGravity(parameters.Gravity));
             _xdgPositioner.SetOffset((int)parameters.Offset.X, (int)parameters.Offset.Y);
-            _xdgPositioner.SetSize((int)parameters.Size.Width, (int)parameters.Size.Height);
-            _xdgPositioner.SetAnchorRect((int)Math.Ceiling(parameters.AnchorRectangle.X), (int)Math.Ceiling(parameters.AnchorRectangle.Y), (int)Math.Ceiling(parameters.AnchorRectangle.Width), (int)Math.Ceiling(parameters.AnchorRectangle.Height));
+            _xdgPositioner.SetSize(size.Width, size.Height);
+            _xdgPositioner.SetAnchorRect((int)Math.Max(1, parameters.AnchorRectangle.X), (int)Math.Max(1, parameters.AnchorRectangle.Y), (int)Math.Max(1, parameters.AnchorRectangle.Width), (int)Math.Max(1, parameters.AnchorRectangle.Height));
             _xdgPositioner.SetConstraintAdjustment((uint)parameters.ConstraintAdjustment);
             if (_xdgPopup is not null && XdgSurfaceConfigureSerial != 0)
             {

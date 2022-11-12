@@ -32,10 +32,6 @@ namespace Avalonia.OpenGL.Egl
                 if (display == IntPtr.Zero)
                     display = egl.GetDisplay(IntPtr.Zero);
             }
-            else if (egl.IsGetPlatformDisplayAvailable)
-            {
-                display = egl.GetPlatformDisplay(platformType, platformDisplay, attrs);
-            }
             else
             {
                 if (!egl.IsGetPlatformDisplayExtAvailable)

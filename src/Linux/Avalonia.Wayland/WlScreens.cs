@@ -91,7 +91,7 @@ namespace Avalonia.Wayland
 
             public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
             {
-                if (flags != WlOutput.ModeEnum.Current)
+                if (!flags.HasAllFlags(WlOutput.ModeEnum.Current))
                     return;
                 _size = new PixelSize(width, height);
             }
