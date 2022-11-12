@@ -73,9 +73,9 @@ namespace Avalonia.Wayland
 
         public void OnPopupDone(XdgPopup eventSender)
         {
-            if (_platform.WlInputDevice.MouseDevice is null || InputRoot is null)
+            if (_platform.WlInputDevice.PointerHandler is null || InputRoot is null)
                 return;
-            var args = new RawPointerEventArgs(_platform.WlInputDevice.MouseDevice, 0, InputRoot, RawPointerEventType.NonClientLeftButtonDown, new Point(), _platform.WlInputDevice.RawInputModifiers);
+            var args = new RawPointerEventArgs(_platform.WlInputDevice.PointerHandler.MouseDevice, 0, InputRoot, RawPointerEventType.NonClientLeftButtonDown, new Point(), _platform.WlInputDevice.RawInputModifiers);
             Input?.Invoke(args);
         }
 

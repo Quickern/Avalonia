@@ -3,11 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using Avalonia.Controls;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
+using Avalonia.Interactivity;
 using Avalonia.Platform;
+using Avalonia.VisualTree;
+
 using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
@@ -40,15 +45,19 @@ namespace Avalonia.Wayland
 
         public Task ClearAsync()
         {
-            _wlDataDevice.SetSelection(null, _platform.WlInputDevice.KeyboardEnterSerial);
+            if (_platform.WlInputDevice.KeyboardHandler is null)
+                return Task.CompletedTask;
+            _wlDataDevice.SetSelection(null, _platform.WlInputDevice.KeyboardHandler.KeyboardEnterSerial);
             return Task.CompletedTask;
         }
 
         public Task SetDataObjectAsync(IDataObject data)
         {
+            if (_platform.WlInputDevice.KeyboardHandler is null)
+                return Task.CompletedTask;
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
             _currentDataSourceHandler = new WlDataSourceHandler(_platform, dataSource, data);
-            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardEnterSerial);
+            _wlDataDevice.SetSelection(dataSource, _platform.WlInputDevice.KeyboardHandler.KeyboardEnterSerial);
             return Task.CompletedTask;
         }
 
@@ -61,17 +70,25 @@ namespace Avalonia.Wayland
 
         public Task<DragDropEffects> DoDragDrop(PointerEventArgs triggerEvent, IDataObject data, DragDropEffects allowedEffects)
         {
-            var window = _platform.WlScreens.KeyboardFocus;
-            if (window is null)
+            var toplevel = FindRoot(triggerEvent.Source);
+            if (toplevel?.PlatformImpl is not WlWindow wlWindow)
                 return Task.FromResult(DragDropEffects.None);
             triggerEvent.Pointer.Capture(null);
             var dataSource = _platform.WlDataDeviceManager.CreateDataSource();
             _currentDataSourceHandler = new WlDataSourceHandler(_platform, dataSource, data, allowedEffects);
-            _wlDataDevice.StartDrag(dataSource, window.WlSurface, null, _platform.WlInputDevice.Serial);
+            _wlDataDevice.StartDrag(dataSource, wlWindow.WlSurface, null, _platform.WlInputDevice.Serial);
             return _currentDataSourceHandler.DnD;
         }
 
         public void Dispose() => _wlDataDevice.Dispose();
+
+        private static TopLevel? FindRoot(IInteractive? interactive)
+        {
+            while (interactive is not null && interactive is not IVisual)
+                interactive = interactive.InteractiveParent;
+            var visual = interactive as IVisual;
+            return visual?.VisualRoot as TopLevel;
+        }
 
         private sealed class WlDataDeviceHandler : IDisposable, WlDataDevice.IEvents
         {
@@ -81,6 +98,8 @@ namespace Avalonia.Wayland
             private Point _position;
             private WlDataObject? _currentOffer;
             private WlDataObject? _dndOffer;
+
+            private WlWindow? _dragWindow;
 
             public WlDataDeviceHandler(AvaloniaWaylandPlatform platform)
             {
@@ -99,14 +118,14 @@ namespace Avalonia.Wayland
                 _enterSerial = serial;
                 _dndOffer = _currentOffer;
                 _currentOffer = null;
-                var window = _platform.WlScreens.KeyboardFocus;
-                if (window?.InputRoot is null)
+                _dragWindow = _platform.WlScreens.WindowFromSurface(surface);
+                if (_dragWindow?.InputRoot is null)
                     return;
                 _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, window.InputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
-                window.Input?.Invoke(args);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragEnter, _dragWindow.InputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
+                _dragWindow.Input?.Invoke(args);
                 Accept(args);
             }
 
@@ -114,26 +133,24 @@ namespace Avalonia.Wayland
 
             public void OnMotion(WlDataDevice eventSender, uint time, WlFixed x, WlFixed y)
             {
-                var window = _platform.WlScreens.KeyboardFocus;
-                if (window?.InputRoot is null || _dndOffer is null)
+                if (_dragWindow?.InputRoot is null || _dndOffer is null)
                     return;
                 _position = new Point((int)x, (int)y);
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, window.InputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
-                window.Input?.Invoke(args);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.DragOver, _dragWindow.InputRoot, _position, _dndOffer, _dndOffer.OfferedDragDropEffects, modifiers);
+                _dragWindow.Input?.Invoke(args);
                 Accept(args);
             }
 
             public void OnDrop(WlDataDevice eventSender)
             {
-                var window = _platform.WlScreens.KeyboardFocus;
-                if (window?.InputRoot is null || _dndOffer is null)
+                if (_dragWindow?.InputRoot is null || _dndOffer is null)
                     return;
                 var dragDropDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
                 var modifiers = _platform.WlInputDevice.RawInputModifiers;
-                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, window.InputRoot, _position, _dndOffer, _dndOffer.MatchedDragDropEffects, modifiers);
-                window.Input?.Invoke(args);
+                var args = new RawDragEvent(dragDropDevice, RawDragEventType.Drop, _dragWindow.InputRoot, _position, _dndOffer, _dndOffer.MatchedDragDropEffects, modifiers);
+                _dragWindow.Input?.Invoke(args);
                 if (args.Effects != DragDropEffects.None)
                     _dndOffer?.WlDataOffer.Finish();
                 else
@@ -269,7 +286,7 @@ namespace Avalonia.Wayland
                     cursor = cursorFactory.GetCursor(StandardCursorType.DragCopy);
                 else if (dndAction.HasAllFlags(WlDataDeviceManager.DndActionEnum.Move))
                     cursor = cursorFactory.GetCursor(StandardCursorType.DragMove);
-                _platform.WlInputDevice.SetCursor(cursor as WlCursor);
+                _platform.WlInputDevice.PointerHandler?.SetCursor(cursor as WlCursor);
             }
 
             private static byte[] ToBytes(string text) => Encoding.UTF8.GetBytes(text);

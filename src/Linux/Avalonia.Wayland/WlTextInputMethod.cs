@@ -12,11 +12,13 @@ namespace Avalonia.Wayland
         private readonly ZwpTextInputV3 _zwpTextInput;
 
         private ITextInputMethodClient? _client;
+        private WlWindow? _textInputWindow;
 
         public WlTextInputMethod(AvaloniaWaylandPlatform platform)
         {
             _platform = platform;
             _zwpTextInput = platform.ZwpTextInput!.GetTextInput(platform.WlSeat);
+            _zwpTextInput.Events = this;
         }
 
         public void SetClient(ITextInputMethodClient? client)
@@ -49,9 +51,9 @@ namespace Avalonia.Wayland
             _zwpTextInput.Commit();
         }
 
-        public void OnEnter(ZwpTextInputV3 eventSender, WlSurface surface) => _platform.WlScreens.SetKeyboardFocus(surface);
+        public void OnEnter(ZwpTextInputV3 eventSender, WlSurface surface) => _textInputWindow = _platform.WlScreens.WindowFromSurface(surface);
 
-        public void OnLeave(ZwpTextInputV3 eventSender, WlSurface surface) { }
+        public void OnLeave(ZwpTextInputV3 eventSender, WlSurface surface) => _textInputWindow = null;
 
         public void OnPreeditString(ZwpTextInputV3 eventSender, string? text, int cursorBegin, int cursorEnd)
         {
@@ -63,12 +65,10 @@ namespace Avalonia.Wayland
 
         public void OnCommitString(ZwpTextInputV3 eventSender, string? text)
         {
-            var window = _platform.WlScreens.KeyboardFocus;
-            var keyboard = _platform.WlInputDevice.KeyboardDevice;
-            if (window?.Input is null || window.InputRoot is null || keyboard is null || text is null)
+            if (_textInputWindow?.InputRoot is null || _platform.WlInputDevice.KeyboardHandler is null || text is null)
                 return;
-            var args = new RawTextInputEventArgs(keyboard, 0, window.InputRoot, text);
-            window.Input.Invoke(args);
+            var args = new RawTextInputEventArgs(_platform.WlInputDevice.KeyboardHandler.KeyboardDevice, 0, _textInputWindow.InputRoot, text);
+            _textInputWindow.Input?.Invoke(args);
         }
 
         public void OnDeleteSurroundingText(ZwpTextInputV3 eventSender, uint beforeLength, uint afterLength) { }

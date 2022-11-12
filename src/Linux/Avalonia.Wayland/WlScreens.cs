@@ -26,12 +26,6 @@ namespace Avalonia.Wayland
 
         public IReadOnlyList<Screen> AllScreens => _allScreens.Select(static x => x.ToScreen()).ToList();
 
-        public WlWindow? KeyboardFocus { get; private set; }
-
-        public WlWindow? PointerFocus { get; private set; }
-
-        public WlWindow? TouchFocus { get; private set; }
-
         public Screen? ScreenFromWindow(IWindowBaseImpl window) => ScreenHelper.ScreenFromWindow(window, AllScreens);
 
         public Screen? ScreenFromPoint(PixelPoint point) => ScreenHelper.ScreenFromPoint(point, AllScreens);
@@ -48,42 +42,11 @@ namespace Avalonia.Wayland
 
         internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput].ToScreen();
 
+        internal WlWindow? WindowFromSurface(WlSurface? wlSurface) => wlSurface is not null && _wlWindows.TryGetValue(wlSurface, out var wlWindow) ? wlWindow : null;
+
         internal void AddWindow(WlWindow window) => _wlWindows.Add(window.WlSurface, window);
 
-        internal void RemoveWindow(WlWindow window)
-        {
-            _wlWindows.Remove(window.WlSurface);
-            if (KeyboardFocus == window)
-                KeyboardFocus = window.Parent;
-            if (PointerFocus == window)
-                PointerFocus = window.Parent;
-            if (TouchFocus == window)
-                TouchFocus = window.Parent;
-        }
-
-        internal void SetKeyboardFocus(WlSurface? surface)
-        {
-            if (surface is null)
-                KeyboardFocus = null;
-            else
-                KeyboardFocus = _wlWindows.TryGetValue(surface, out var window) ? window : null;
-        }
-
-        internal void SetPointerFocus(WlSurface? surface)
-        {
-            if (surface is null)
-                PointerFocus = null;
-            else
-                PointerFocus = _wlWindows.TryGetValue(surface, out var window) ? window : null;
-        }
-
-        internal void SetTouchFocus(WlSurface? surface)
-        {
-            if (surface is null)
-                TouchFocus = null;
-            else
-                TouchFocus = _wlWindows.TryGetValue(surface, out var window) ? window : null;
-        }
+        internal void RemoveWindow(WlWindow window) => _wlWindows.Remove(window.WlSurface);
 
         private void OnGlobalAdded(WlRegistryHandler.GlobalInfo globalInfo)
         {

@@ -139,7 +139,7 @@ namespace Avalonia.Wayland
 
         public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
-        public void SetCursor(ICursorImpl? cursor) => _platform.WlInputDevice.SetCursor(cursor as WlCursor);
+        public void SetCursor(ICursorImpl? cursor) => _platform.WlInputDevice.PointerHandler?.SetCursor(cursor as WlCursor);
 
         public IPopupImpl CreatePopup() => new WlPopup(_platform, this);
 
