@@ -24,7 +24,7 @@ namespace Avalonia.Wayland
 
         public int ScreenCount => _allScreens.Count;
 
-        public IReadOnlyList<Screen> AllScreens => _allScreens.Select(static x => x.ToScreen()).ToList();
+        public IReadOnlyList<Screen> AllScreens => _allScreens.Select(static x => x.AsScreen()).ToList();
 
         public Screen? ScreenFromWindow(IWindowBaseImpl window) => ScreenHelper.ScreenFromWindow(window, AllScreens);
 
@@ -40,7 +40,7 @@ namespace Avalonia.Wayland
                 wlScreen.Dispose();
         }
 
-        internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput].ToScreen();
+        internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput].AsScreen();
 
         internal WlWindow? WindowFromSurface(WlSurface? wlSurface) => wlSurface is not null && _wlWindows.TryGetValue(wlSurface, out var wlWindow) ? wlWindow : null;
 
@@ -84,16 +84,15 @@ namespace Avalonia.Wayland
 
             public WlOutput WlOutput { get; }
 
-            public Screen ToScreen() => _screen!;
+            public Screen AsScreen() => _screen!;
 
             public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel,
                 string make, string model, WlOutput.TransformEnum transform) => _position = new PixelPoint(x, y);
 
             public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
             {
-                if (!flags.HasAllFlags(WlOutput.ModeEnum.Current))
-                    return;
-                _size = new PixelSize(width, height);
+                if (flags.HasAllFlags(WlOutput.ModeEnum.Current))
+                    _size = new PixelSize(width, height);
             }
 
             public void OnScale(WlOutput eventSender, int factor) => _scaling = factor;

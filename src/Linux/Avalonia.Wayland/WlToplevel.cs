@@ -199,7 +199,7 @@ namespace Avalonia.Wayland
                 WindowStateChanged.Invoke(windowState);
             }
 
-            PendingSize = new PixelSize(width, height);
+            PendingSize = new Size(width, height);
         }
 
         public void OnClose(XdgToplevel eventSender) => Closing.Invoke();
@@ -220,7 +220,6 @@ namespace Avalonia.Wayland
 
         public override void Dispose()
         {
-            Closed?.Invoke();
             _exported?.Dispose();
             _toplevelDecoration?.Dispose();
             _xdgToplevel.Dispose();

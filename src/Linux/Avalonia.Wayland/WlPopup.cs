@@ -68,7 +68,7 @@ namespace Avalonia.Wayland
 
         public void OnConfigure(XdgPopup eventSender, int x, int y, int width, int height)
         {
-            PendingSize = new PixelSize(width, height);
+            PendingSize = new Size(width, height);
             Position = new PixelPoint(x, y);
         }
 
@@ -84,7 +84,6 @@ namespace Avalonia.Wayland
 
         public override void Dispose()
         {
-            Closed?.Invoke();
             _xdgPositioner.Dispose();
             _xdgPopup?.Dispose();
             base.Dispose();

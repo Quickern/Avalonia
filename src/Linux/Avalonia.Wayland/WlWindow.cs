@@ -115,7 +115,7 @@ namespace Avalonia.Wayland
 
         protected WlOutput? WlOutput { get; private set; }
 
-        protected PixelSize PendingSize { get; set; }
+        protected Size PendingSize { get; set; }
 
         public IRenderer CreateRenderer(IRenderRoot root)
         {
@@ -135,7 +135,7 @@ namespace Avalonia.Wayland
 
         public void SetInputRoot(IInputRoot inputRoot) => InputRoot = inputRoot;
 
-        public Point PointToClient(PixelPoint point) => new(point.X, point.Y);
+        public Point PointToClient(PixelPoint point) => point.ToPointWithDpi(RenderScaling);
 
         public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
@@ -168,20 +168,13 @@ namespace Avalonia.Wayland
 
         public void Activate() { }
 
-        public void SetTopmost(bool value) { }
+        public void SetTopmost(bool value) { } // impossible on Wayland
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
-            PendingSize = new PixelSize((int)clientSize.Width, (int)clientSize.Height);
-            if (XdgSurfaceConfigureSerial != 0)
+            if (XdgSurfaceConfigureSerial != 0 || clientSize == ClientSize)
                 return;
-            var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
-            if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
-                return;
-            ClientSize = pendingSize;
-            if (_eglWindow != IntPtr.Zero)
-                LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
-            Resized?.Invoke(ClientSize, reason);
+            PendingSize = clientSize;
         }
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
@@ -201,13 +194,6 @@ namespace Avalonia.Wayland
         {
             _frameCallback!.Dispose();
             _frameCallback = null;
-            var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
-            if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
-                return;
-            ClientSize = pendingSize;
-            if (_eglWindow != IntPtr.Zero)
-                LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
-            Resized?.Invoke(ClientSize, PlatformResizeReason.User);
             Paint?.Invoke(new Rect(ClientSize));
         }
 
@@ -217,6 +203,15 @@ namespace Avalonia.Wayland
                 return;
             XdgSurfaceConfigureSerial = serial;
             XdgSurface.AckConfigure(serial);
+
+            if (PendingSize != Size.Empty && PendingSize != ClientSize)
+            {
+                ClientSize = PendingSize;
+                if (_eglWindow != IntPtr.Zero)
+                    LibWaylandEgl.wl_egl_window_resize(_eglWindow, (int)PendingSize.Width, (int)PendingSize.Height, 0, 0);
+                Resized?.Invoke(ClientSize, PlatformResizeReason.User);
+            }
+
             if (_frameCallback is null)
                 Paint?.Invoke(new Rect(ClientSize));
         }
@@ -229,6 +224,7 @@ namespace Avalonia.Wayland
             _wlFramebufferSurface.Dispose();
             XdgSurface.Dispose();
             WlSurface.Dispose();
+            Closed?.Invoke();
         }
 
         internal void RequestFrame()
