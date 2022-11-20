@@ -24,21 +24,15 @@ namespace Avalonia.OpenGL.Egl
             
         }
 
-        static IntPtr CreateDisplay(EglInterface egl, int platformType, IntPtr platformDisplay, int[] attrs)
+        private static IntPtr CreateDisplay(EglInterface egl, int platformType, IntPtr platformDisplay, int[] attrs)
         {
             var display = IntPtr.Zero;
             if (platformType == -1 && platformDisplay == IntPtr.Zero)
-            {
-                if (display == IntPtr.Zero)
-                    display = egl.GetDisplay(IntPtr.Zero);
-            }
-            else
-            {
-                if (!egl.IsGetPlatformDisplayExtAvailable)
-                    throw new OpenGlException("eglGetPlatformDisplayEXT is not supported by libegl");
+                display = egl.GetDisplay(IntPtr.Zero);
+            else if (egl.IsGetPlatformDisplayExtAvailable)
                 display = egl.GetPlatformDisplayExt(platformType, platformDisplay, attrs);
-            }
-
+            else if (egl.IsGetPlatformDisplayAvailable)
+                display = egl.GetPlatformDisplay(platformType, platformDisplay, attrs);
             if (display == IntPtr.Zero)
                 throw OpenGlException.GetFormattedException("eglGetDisplay", egl);
             return display;
