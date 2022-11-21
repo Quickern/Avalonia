@@ -204,7 +204,13 @@ namespace Avalonia.Wayland
 
         public void OnClose(XdgToplevel eventSender) => Closing.Invoke();
 
-        public void OnConfigureBounds(XdgToplevel eventSender, int width, int height) { }
+        public void OnConfigureBounds(XdgToplevel eventSender, int width, int height)
+        {
+            if (WlOutput is null)
+                return;
+            var screen = _platform.WlScreens.ScreenFromOutput(WlOutput);
+            screen.SetBounds(width, height);
+        }
 
         public void OnWmCapabilities(XdgToplevel eventSender, ReadOnlySpan<XdgToplevel.WmCapabilitiesEnum> capabilities) { }
 

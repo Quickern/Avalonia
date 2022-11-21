@@ -38,7 +38,7 @@ namespace Avalonia.Wayland
                 wlScreen.Dispose();
         }
 
-        internal Screen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput];
+        internal WlScreen ScreenFromOutput(WlOutput wlOutput) => _wlOutputs[wlOutput];
 
         internal WlWindow? WindowFromSurface(WlSurface? wlSurface) => wlSurface is not null && _wlWindows.TryGetValue(wlSurface, out var wlWindow) ? wlWindow : null;
 
@@ -67,7 +67,7 @@ namespace Avalonia.Wayland
             wlScreen.Dispose();
         }
 
-        private sealed class WlScreen : Screen, WlOutput.IEvents, IDisposable
+        internal sealed class WlScreen : Screen, WlOutput.IEvents, IDisposable
         {
             public WlScreen(WlOutput wlOutput)
             {
@@ -96,6 +96,8 @@ namespace Avalonia.Wayland
             public void OnDone(WlOutput eventSender) { }
 
             public void Dispose() => WlOutput.Dispose();
+
+            internal void SetBounds(int width, int height) => Bounds = new PixelRect(Bounds.X, Bounds.Y, width, height);
         }
     }
 }
