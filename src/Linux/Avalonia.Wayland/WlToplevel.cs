@@ -50,7 +50,7 @@ namespace Avalonia.Wayland
 
         public bool NeedsManagedDecorations => IsClientAreaExtendedToDecorations && _extendClientAreaChromeHints.HasAnyFlag(ExtendClientAreaChromeHints.PreferSystemChrome | ExtendClientAreaChromeHints.SystemChrome);
 
-        private Thickness _extendedMargins = _windowDecorationThickness;
+        private Thickness _extendedMargins = s_windowDecorationThickness;
         public Thickness ExtendedMargins => IsClientAreaExtendedToDecorations ? _extendedMargins : default;
 
         public Thickness OffScreenMargin => default;
@@ -170,7 +170,7 @@ namespace Avalonia.Wayland
 
         public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight)
         {
-            _extendedMargins = titleBarHeight is -1 ? _windowDecorationThickness : new Thickness(0, titleBarHeight, 0, 0);
+            _extendedMargins = titleBarHeight is -1 ? s_windowDecorationThickness : new Thickness(0, titleBarHeight, 0, 0);
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
 
@@ -212,7 +212,7 @@ namespace Avalonia.Wayland
         {
             IsClientAreaExtendedToDecorations = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
             if (IsClientAreaExtendedToDecorations && _extendedMargins.IsDefault)
-                _extendedMargins = _windowDecorationThickness;
+                _extendedMargins = s_windowDecorationThickness;
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
 
@@ -226,7 +226,7 @@ namespace Avalonia.Wayland
             base.Dispose();
         }
 
-        private static readonly Thickness _windowDecorationThickness = new(0, 25, 0, 0);
+        private static readonly Thickness s_windowDecorationThickness = new(0, 30, 0, 0);
 
         private static XdgToplevel.ResizeEdgeEnum ParseWindowEdges(WindowEdge windowEdge) => windowEdge switch
         {

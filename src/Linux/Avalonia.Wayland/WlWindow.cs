@@ -135,7 +135,7 @@ namespace Avalonia.Wayland
 
         public void SetInputRoot(IInputRoot inputRoot) => InputRoot = inputRoot;
 
-        public Point PointToClient(PixelPoint point) => point.ToPointWithDpi(RenderScaling);
+        public Point PointToClient(PixelPoint point) => point.ToPoint(1);
 
         public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
@@ -148,21 +148,14 @@ namespace Avalonia.Wayland
             if (transparencyLevel == TransparencyLevel)
                 return;
             if (transparencyLevel == WindowTransparencyLevel.None)
-            {
-                using var region = _platform.WlCompositor.CreateRegion();
-                region.Add(0, 0, (int)ClientSize.Width, (int)ClientSize.Height);
-                WlSurface.SetOpaqueRegion(region);
-            }
+                SetOpaqueRegion(ClientSize);
             else
-            {
                 WlSurface.SetOpaqueRegion(null);
-            }
-
             TransparencyLevel = transparencyLevel;
             TransparencyLevelChanged?.Invoke(transparencyLevel);
         }
 
-        public virtual void Show(bool activate, bool isDialog) => Paint?.Invoke(Rect.Empty);
+        public virtual void Show(bool activate, bool isDialog) => DoPaint();
 
         public abstract void Hide();
 
@@ -172,9 +165,8 @@ namespace Avalonia.Wayland
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
-            if (XdgSurfaceConfigureSerial != 0 || clientSize == ClientSize)
-                return;
-            PendingSize = clientSize;
+            if (XdgSurfaceConfigureSerial == 0 && clientSize != Size.Empty && clientSize != ClientSize)
+                DoResize(clientSize);
         }
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
@@ -194,7 +186,7 @@ namespace Avalonia.Wayland
         {
             _frameCallback!.Dispose();
             _frameCallback = null;
-            Paint?.Invoke(new Rect(ClientSize));
+            DoPaint();
         }
 
         public void OnConfigure(XdgSurface eventSender, uint serial)
@@ -203,17 +195,8 @@ namespace Avalonia.Wayland
                 return;
             XdgSurfaceConfigureSerial = serial;
             XdgSurface.AckConfigure(serial);
-
-            if (PendingSize != Size.Empty && PendingSize != ClientSize)
-            {
-                ClientSize = PendingSize;
-                if (_eglWindow != IntPtr.Zero)
-                    LibWaylandEgl.wl_egl_window_resize(_eglWindow, (int)PendingSize.Width, (int)PendingSize.Height, 0, 0);
-                Resized?.Invoke(ClientSize, PlatformResizeReason.User);
-            }
-
             if (_frameCallback is null)
-                Paint?.Invoke(new Rect(ClientSize));
+                DoPaint();
         }
 
         public virtual void Dispose()
@@ -233,6 +216,30 @@ namespace Avalonia.Wayland
                 return;
             _frameCallback = WlSurface.Frame();
             _frameCallback.Events = this;
+        }
+
+        private void DoResize(Size size)
+        {
+            ClientSize = size;
+            if (_eglWindow != IntPtr.Zero)
+                LibWaylandEgl.wl_egl_window_resize(_eglWindow, (int)size.Width, (int)size.Height, 0, 0);
+            if (TransparencyLevel == WindowTransparencyLevel.None)
+                SetOpaqueRegion(size);
+            Resized?.Invoke(size, PlatformResizeReason.User);
+        }
+
+        private void DoPaint()
+        {
+            if (PendingSize != Size.Empty && PendingSize != ClientSize)
+                DoResize(PendingSize);
+            Paint?.Invoke(new Rect(ClientSize));
+        }
+
+        private void SetOpaqueRegion(Size size)
+        {
+            using var region = _platform.WlCompositor.CreateRegion();
+            region.Add(0, 0, (int)size.Width, (int)size.Height);
+            WlSurface.SetOpaqueRegion(region);
         }
     }
 }
