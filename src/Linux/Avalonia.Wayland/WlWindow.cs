@@ -208,6 +208,7 @@ namespace Avalonia.Wayland
             XdgSurface.Dispose();
             WlSurface.Dispose();
             Closed?.Invoke();
+            Console.WriteLine("----\nDisposed Window\n-----");
         }
 
         internal void RequestFrame()

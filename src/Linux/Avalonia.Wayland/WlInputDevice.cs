@@ -44,5 +44,12 @@ namespace Avalonia.Wayland
             KeyboardHandler?.Dispose();
             TouchHandler?.Dispose();
         }
+
+        internal void InvalidateFocus(WlWindow window)
+        {
+            PointerHandler?.InvalidateFocus(window);
+            KeyboardHandler?.InvalidateFocus(window);
+            TouchHandler?.InvalidateFocus(window);
+        }
     }
 }

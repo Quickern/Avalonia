@@ -44,7 +44,11 @@ namespace Avalonia.Wayland
 
         internal void AddWindow(WlWindow window) => _wlWindows.Add(window.WlSurface, window);
 
-        internal void RemoveWindow(WlWindow window) => _wlWindows.Remove(window.WlSurface);
+        internal void RemoveWindow(WlWindow window)
+        {
+            _platform.WlInputDevice.InvalidateFocus(window);
+            _wlWindows.Remove(window.WlSurface);
+        }
 
         private void OnGlobalAdded(WlRegistryHandler.GlobalInfo globalInfo)
         {
