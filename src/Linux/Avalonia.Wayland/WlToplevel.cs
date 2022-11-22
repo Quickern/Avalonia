@@ -91,12 +91,6 @@ namespace Avalonia.Wayland
             base.Show(activate, isDialog);
         }
 
-        public override void Hide()
-        {
-            WlSurface.Attach(null, 0, 0);
-            WlSurface.Commit();
-        }
-
         public void SetTitle(string? title) => _xdgToplevel.SetTitle(title ?? string.Empty);
 
         public void SetParent(IWindowImpl parent)

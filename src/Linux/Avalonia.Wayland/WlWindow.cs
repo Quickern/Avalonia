@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
@@ -63,7 +62,7 @@ namespace Avalonia.Wayland
 
         public ITextInputMethodImpl? TextInputMethod { get; }
 
-        public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.Scaling)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
+        public Size MaxAutoSizeHint => WlOutput is null ? Size.Infinity : _platform.WlScreens.ScreenFromOutput(WlOutput).Bounds.Size.ToSize(1);
 
         public Size ClientSize { get; private set; }
 
@@ -157,7 +156,11 @@ namespace Avalonia.Wayland
 
         public virtual void Show(bool activate, bool isDialog) => DoPaint();
 
-        public abstract void Hide();
+        public void Hide()
+        {
+            WlSurface.Attach(null, 0, 0);
+            WlSurface.Commit();
+        }
 
         public void Activate() { }
 
@@ -180,7 +183,7 @@ namespace Avalonia.Wayland
             WlSurface.SetBufferScale((int)RenderScaling);
         }
 
-        public void OnLeave(WlSurface eventSender, WlOutput output) { }
+        public void OnLeave(WlSurface eventSender, WlOutput output) => WlOutput = null;
 
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
@@ -208,7 +211,6 @@ namespace Avalonia.Wayland
             XdgSurface.Dispose();
             WlSurface.Dispose();
             Closed?.Invoke();
-            Console.WriteLine("----\nDisposed Window\n-----");
         }
 
         internal void RequestFrame()
