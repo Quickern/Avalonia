@@ -1,13 +1,9 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-
 using Avalonia.Controls.Platform.Surfaces;
-using Avalonia.FreeDesktop;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using NWayland.Interop;
-using NWayland.Protocols.Wayland;
 
 namespace Avalonia.Wayland
 {
