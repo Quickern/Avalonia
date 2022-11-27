@@ -21,17 +21,6 @@ namespace Avalonia.Wayland
 
         public bool CanPickFolder => true;
 
-        private async ValueTask<IStorageProvider> EnsureStorageProvider()
-        {
-            if (_storageProvider is not null)
-                return _storageProvider;
-            var windowHandle = (_window.PlatformImpl as WlToplevel)?.ExportedToplevelHandle;
-            if (windowHandle is not null)
-                _storageProvider = await DBusSystemDialog.TryCreate(windowHandle);
-            _storageProvider ??= new ManagedStorageProvider<Window>(_window, AvaloniaLocator.Current.GetService<ManagedFileDialogOptions>());
-            return _storageProvider;
-        }
-
         public async Task<IReadOnlyList<IStorageFile>> OpenFilePickerAsync(FilePickerOpenOptions options)
         {
             var provider = await EnsureStorageProvider();
@@ -60,6 +49,17 @@ namespace Avalonia.Wayland
         {
             var provider = await EnsureStorageProvider();
             return await provider.OpenFolderBookmarkAsync(bookmark);
+        }
+
+        private async ValueTask<IStorageProvider> EnsureStorageProvider()
+        {
+            if (_storageProvider is not null)
+                return _storageProvider;
+            var windowHandle = (_window.PlatformImpl as WlToplevel)?.ExportedToplevelHandle;
+            if (windowHandle is not null)
+                _storageProvider = await DBusSystemDialog.TryCreate(windowHandle);
+            _storageProvider ??= new ManagedStorageProvider<Window>(_window, AvaloniaLocator.Current.GetService<ManagedFileDialogOptions>());
+            return _storageProvider;
         }
     }
 }

@@ -50,7 +50,7 @@ namespace Avalonia.Wayland
 
         public bool NeedsManagedDecorations => IsClientAreaExtendedToDecorations && _extendClientAreaChromeHints.HasAnyFlag(ExtendClientAreaChromeHints.PreferSystemChrome | ExtendClientAreaChromeHints.SystemChrome);
 
-        private Thickness _extendedMargins = _windowDecorationThickness;
+        private Thickness _extendedMargins = s_windowDecorationThickness;
         public Thickness ExtendedMargins => IsClientAreaExtendedToDecorations ? _extendedMargins : default;
 
         public Thickness OffScreenMargin => default;
@@ -89,12 +89,6 @@ namespace Avalonia.Wayland
         {
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
             base.Show(activate, isDialog);
-        }
-
-        public override void Hide()
-        {
-            WlSurface.Attach(null, 0, 0);
-            WlSurface.Commit();
         }
 
         public void SetTitle(string? title) => _xdgToplevel.SetTitle(title ?? string.Empty);
@@ -170,7 +164,7 @@ namespace Avalonia.Wayland
 
         public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight)
         {
-            _extendedMargins = titleBarHeight is -1 ? _windowDecorationThickness : new Thickness(0, titleBarHeight, 0, 0);
+            _extendedMargins = titleBarHeight is -1 ? s_windowDecorationThickness : new Thickness(0, titleBarHeight, 0, 0);
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
 
@@ -199,12 +193,18 @@ namespace Avalonia.Wayland
                 WindowStateChanged.Invoke(windowState);
             }
 
-            PendingSize = new PixelSize(width, height);
+            PendingSize = new Size(width, height);
         }
 
         public void OnClose(XdgToplevel eventSender) => Closing.Invoke();
 
-        public void OnConfigureBounds(XdgToplevel eventSender, int width, int height) { }
+        public void OnConfigureBounds(XdgToplevel eventSender, int width, int height)
+        {
+            if (WlOutput is null)
+                return;
+            var screen = _platform.WlScreens.ScreenFromOutput(WlOutput);
+            screen.SetBounds(width, height);
+        }
 
         public void OnWmCapabilities(XdgToplevel eventSender, ReadOnlySpan<XdgToplevel.WmCapabilitiesEnum> capabilities) { }
 
@@ -212,7 +212,7 @@ namespace Avalonia.Wayland
         {
             IsClientAreaExtendedToDecorations = mode == ZxdgToplevelDecorationV1.ModeEnum.ClientSide;
             if (IsClientAreaExtendedToDecorations && _extendedMargins.IsDefault)
-                _extendedMargins = _windowDecorationThickness;
+                _extendedMargins = s_windowDecorationThickness;
             ExtendClientAreaToDecorationsChanged.Invoke(IsClientAreaExtendedToDecorations);
         }
 
@@ -220,14 +220,13 @@ namespace Avalonia.Wayland
 
         public override void Dispose()
         {
-            Closed?.Invoke();
             _exported?.Dispose();
             _toplevelDecoration?.Dispose();
             _xdgToplevel.Dispose();
             base.Dispose();
         }
 
-        private static readonly Thickness _windowDecorationThickness = new(0, 25, 0, 0);
+        private static readonly Thickness s_windowDecorationThickness = new(0, 30, 0, 0);
 
         private static XdgToplevel.ResizeEdgeEnum ParseWindowEdges(WindowEdge windowEdge) => windowEdge switch
         {

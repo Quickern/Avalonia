@@ -233,6 +233,27 @@ namespace Avalonia.Wayland
                 _pointerTimer = _platformThreading.StartTimer(DispatcherPriority.Render, wlCursor[0].Delay, OnCursorAnimation);
         }
 
+        public void Dispose()
+        {
+            _wlPointer.Dispose();
+            _pointerSurface.Dispose();
+            _currentCursor?.Dispose();
+            _pointerTimer?.Dispose();
+            _zwpPointerGestureSwipe?.Dispose();
+            _zwpPointerGesturePinch?.Dispose();
+            MouseDevice.Dispose();
+        }
+
+        internal void InvalidateFocus(WlWindow window)
+        {
+            if (_pointerWindow == window)
+                _pointerWindow = null;
+            if (_pinchGestureWindow == window)
+                _pinchGestureWindow = null;
+            if (_swipeGestureWindow == window)
+                _swipeGestureWindow = null;
+        }
+
         private void OnCursorAnimation()
         {
             var oldImage = _currentCursorImageIndex == -1 ? null : _currentCursor![_currentCursorImageIndex];
@@ -252,17 +273,6 @@ namespace Avalonia.Wayland
             _pointerSurface.DamageBuffer(0, 0, cursorImage.Size.Width, cursorImage.Size.Height);
             _pointerSurface.Commit();
             _wlPointer.SetCursor(PointerSurfaceSerial, _pointerSurface, cursorImage.Hotspot.X, cursorImage.Hotspot.Y);
-        }
-
-        public void Dispose()
-        {
-            _wlPointer.Dispose();
-            _pointerSurface.Dispose();
-            _currentCursor?.Dispose();
-            _pointerTimer?.Dispose();
-            _zwpPointerGestureSwipe?.Dispose();
-            _zwpPointerGesturePinch?.Dispose();
-            MouseDevice.Dispose();
         }
     }
 }

@@ -192,6 +192,12 @@ namespace Avalonia.Wayland
             _keyboardTimer?.Dispose();
         }
 
+        internal void InvalidateFocus(WlWindow window)
+        {
+            if (_window == window)
+                _window = null;
+        }
+
         private void OnRepeatKey()
         {
             if (_window?.InputRoot is null)

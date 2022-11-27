@@ -83,5 +83,11 @@ namespace Avalonia.Wayland
             _wlTouch.Dispose();
             TouchDevice.Dispose();
         }
+
+        internal void InvalidateFocus(WlWindow window)
+        {
+            if (_window == window)
+                _window = null;
+        }
     }
 }

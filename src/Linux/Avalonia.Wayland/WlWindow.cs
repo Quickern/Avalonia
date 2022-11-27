@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
@@ -63,7 +62,7 @@ namespace Avalonia.Wayland
 
         public ITextInputMethodImpl? TextInputMethod { get; }
 
-        public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.Scaling)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
+        public Size MaxAutoSizeHint => WlOutput is null ? Size.Infinity : _platform.WlScreens.ScreenFromOutput(WlOutput).Bounds.Size.ToSize(1);
 
         public Size ClientSize { get; private set; }
 
@@ -115,7 +114,7 @@ namespace Avalonia.Wayland
 
         protected WlOutput? WlOutput { get; private set; }
 
-        protected PixelSize PendingSize { get; set; }
+        protected Size PendingSize { get; set; }
 
         public IRenderer CreateRenderer(IRenderRoot root)
         {
@@ -135,7 +134,7 @@ namespace Avalonia.Wayland
 
         public void SetInputRoot(IInputRoot inputRoot) => InputRoot = inputRoot;
 
-        public Point PointToClient(PixelPoint point) => new(point.X, point.Y);
+        public Point PointToClient(PixelPoint point) => point.ToPoint(1);
 
         public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
 
@@ -148,40 +147,29 @@ namespace Avalonia.Wayland
             if (transparencyLevel == TransparencyLevel)
                 return;
             if (transparencyLevel == WindowTransparencyLevel.None)
-            {
-                using var region = _platform.WlCompositor.CreateRegion();
-                region.Add(0, 0, (int)ClientSize.Width, (int)ClientSize.Height);
-                WlSurface.SetOpaqueRegion(region);
-            }
+                SetOpaqueRegion(ClientSize);
             else
-            {
                 WlSurface.SetOpaqueRegion(null);
-            }
-
             TransparencyLevel = transparencyLevel;
             TransparencyLevelChanged?.Invoke(transparencyLevel);
         }
 
-        public virtual void Show(bool activate, bool isDialog) => Paint?.Invoke(Rect.Empty);
+        public virtual void Show(bool activate, bool isDialog) => DoPaint();
 
-        public abstract void Hide();
+        public void Hide()
+        {
+            WlSurface.Attach(null, 0, 0);
+            WlSurface.Commit();
+        }
 
         public void Activate() { }
 
-        public void SetTopmost(bool value) { }
+        public void SetTopmost(bool value) { } // impossible on Wayland
 
         public void Resize(Size clientSize, PlatformResizeReason reason = PlatformResizeReason.Application)
         {
-            PendingSize = new PixelSize((int)clientSize.Width, (int)clientSize.Height);
-            if (XdgSurfaceConfigureSerial != 0)
-                return;
-            var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
-            if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
-                return;
-            ClientSize = pendingSize;
-            if (_eglWindow != IntPtr.Zero)
-                LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
-            Resized?.Invoke(ClientSize, reason);
+            if (XdgSurfaceConfigureSerial == 0 && clientSize != Size.Empty && clientSize != ClientSize)
+                DoResize(clientSize);
         }
 
         public void OnEnter(WlSurface eventSender, WlOutput output)
@@ -195,20 +183,13 @@ namespace Avalonia.Wayland
             WlSurface.SetBufferScale((int)RenderScaling);
         }
 
-        public void OnLeave(WlSurface eventSender, WlOutput output) { }
+        public void OnLeave(WlSurface eventSender, WlOutput output) => WlOutput = null;
 
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
             _frameCallback!.Dispose();
             _frameCallback = null;
-            var pendingSize = new Size(PendingSize.Width, PendingSize.Height);
-            if (PendingSize == PixelSize.Empty || pendingSize == ClientSize)
-                return;
-            ClientSize = pendingSize;
-            if (_eglWindow != IntPtr.Zero)
-                LibWaylandEgl.wl_egl_window_resize(_eglWindow, PendingSize.Width, PendingSize.Height, 0, 0);
-            Resized?.Invoke(ClientSize, PlatformResizeReason.User);
-            Paint?.Invoke(new Rect(ClientSize));
+            DoPaint();
         }
 
         public void OnConfigure(XdgSurface eventSender, uint serial)
@@ -218,7 +199,7 @@ namespace Avalonia.Wayland
             XdgSurfaceConfigureSerial = serial;
             XdgSurface.AckConfigure(serial);
             if (_frameCallback is null)
-                Paint?.Invoke(new Rect(ClientSize));
+                DoPaint();
         }
 
         public virtual void Dispose()
@@ -229,6 +210,7 @@ namespace Avalonia.Wayland
             _wlFramebufferSurface.Dispose();
             XdgSurface.Dispose();
             WlSurface.Dispose();
+            Closed?.Invoke();
         }
 
         internal void RequestFrame()
@@ -237,6 +219,30 @@ namespace Avalonia.Wayland
                 return;
             _frameCallback = WlSurface.Frame();
             _frameCallback.Events = this;
+        }
+
+        private void DoResize(Size size)
+        {
+            ClientSize = size;
+            if (_eglWindow != IntPtr.Zero)
+                LibWaylandEgl.wl_egl_window_resize(_eglWindow, (int)size.Width, (int)size.Height, 0, 0);
+            if (TransparencyLevel == WindowTransparencyLevel.None)
+                SetOpaqueRegion(size);
+            Resized?.Invoke(size, PlatformResizeReason.User);
+        }
+
+        private void DoPaint()
+        {
+            if (PendingSize != Size.Empty && PendingSize != ClientSize)
+                DoResize(PendingSize);
+            Paint?.Invoke(new Rect(ClientSize));
+        }
+
+        private void SetOpaqueRegion(Size size)
+        {
+            using var region = _platform.WlCompositor.CreateRegion();
+            region.Add(0, 0, (int)size.Width, (int)size.Height);
+            WlSurface.SetOpaqueRegion(region);
         }
     }
 }

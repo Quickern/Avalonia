@@ -98,7 +98,7 @@ namespace Avalonia.X11
 
             // We need the latin key, since it's mainly used for hotkeys, we use a different API for text anyway
             var key = (XkbKey)XKeycodeToKeysym(_x11.Display, ev.KeyEvent.keycode, index ? 1 : 0).ToInt32();
-                
+
             // Manually switch the Shift index for the keypad,
             // there should be a proper way to do this
             if (ev.KeyEvent.state.HasAllFlags(XModifierMask.Mod2Mask)

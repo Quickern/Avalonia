@@ -14,7 +14,7 @@ namespace Avalonia.Platform
         /// Multiply this value by 100 to get a percentage.
         /// Both X and Y scaling factors are assumed uniform.
         /// </remarks>
-        public double Scaling { get; }
+        public double Scaling { get; protected set; }
 
         /// <inheritdoc cref="Scaling"/>
         [Obsolete("Use the Scaling property instead.")]
@@ -26,7 +26,7 @@ namespace Avalonia.Platform
         /// <remarks>
         /// This generally is the raw pixel counts in both the X and Y direction.
         /// </remarks>
-        public PixelRect Bounds { get; }
+        public PixelRect Bounds { get; protected set; }
 
         /// <summary>
         /// Gets the actual working-area pixel-size of the screen.
@@ -35,7 +35,7 @@ namespace Avalonia.Platform
         /// This area may be smaller than <see href="Bounds"/> to account for notches and
         /// other block-out areas such as taskbars etc.
         /// </remarks>
-        public PixelRect WorkingArea { get; }
+        public PixelRect WorkingArea { get; protected set; }
 
         /// <summary>
         /// Gets a value indicating whether the screen is the primary one.
@@ -45,6 +45,11 @@ namespace Avalonia.Platform
         /// <inheritdoc cref="IsPrimary"/>
         [Obsolete("Use the IsPrimary property instead.")]
         public bool Primary => IsPrimary;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Screen"/> class.
+        /// </summary>
+        protected Screen() { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Screen"/> class.
