@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using Avalonia.Controls;
 using Avalonia.FreeDesktop;
 using Avalonia.Input;
@@ -12,7 +11,6 @@ using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
-
 using NWayland.Interop;
 using NWayland.Protocols.Wayland;
 
