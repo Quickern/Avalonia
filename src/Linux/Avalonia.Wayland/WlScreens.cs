@@ -81,14 +81,13 @@ namespace Avalonia.Wayland
 
             public WlOutput WlOutput { get; }
 
-            public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel,
-                string make, string model, WlOutput.TransformEnum transform) =>
-                WorkingArea = Bounds = new PixelRect(x, y, Bounds.Width, Bounds.Height);
+            public void OnGeometry(WlOutput eventSender, int x, int y, int physicalWidth, int physicalHeight, WlOutput.SubpixelEnum subpixel, string make, string model, WlOutput.TransformEnum transform) =>
+                Bounds = new PixelRect(x, y, Bounds.Width, Bounds.Height);
 
             public void OnMode(WlOutput eventSender, WlOutput.ModeEnum flags, int width, int height, int refresh)
             {
                 if (flags.HasAllFlags(WlOutput.ModeEnum.Current))
-                    WorkingArea = Bounds = new PixelRect(Bounds.X, Bounds.Y, width, height);
+                    Bounds = new PixelRect(Bounds.X, Bounds.Y, width, height);
             }
 
             public void OnScale(WlOutput eventSender, int factor) => Scaling = factor;

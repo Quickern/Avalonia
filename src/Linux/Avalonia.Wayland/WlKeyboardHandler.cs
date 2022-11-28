@@ -141,17 +141,18 @@ namespace Avalonia.Wayland
                 if (LibXkbCommon.xkb_keymap_key_repeats(_xkbKeymap, code) && _repeatInterval > TimeSpan.Zero)
                 {
                     _keyboardTimer?.Dispose();
-                    _firstRepeat = true;
                     _repeatTime = time;
                     _repeatCode = code;
                     _repeatSym = sym;
                     _repeatKey = avaloniaKey;
+                    _firstRepeat = true;
                     _keyboardTimer = _platformThreading.StartTimer(DispatcherPriority.Input, _repeatDelay, OnRepeatKey);
                 }
             }
             else if (_repeatKey == avaloniaKey)
             {
                 _keyboardTimer?.Dispose();
+                _keyboardTimer = null;
             }
         }
 
@@ -181,7 +182,7 @@ namespace Avalonia.Wayland
         public void OnRepeatInfo(WlKeyboard eventSender, int rate, int delay)
         {
             _repeatDelay = TimeSpan.FromMilliseconds(delay);
-            _repeatInterval = TimeSpan.FromSeconds(1f / rate);
+            _repeatInterval = TimeSpan.FromSeconds(1d / rate);
         }
 
         public void Dispose()
