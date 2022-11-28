@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
@@ -62,7 +63,7 @@ namespace Avalonia.Wayland
 
         public ITextInputMethodImpl? TextInputMethod { get; }
 
-        public Size MaxAutoSizeHint => WlOutput is null ? Size.Infinity : _platform.WlScreens.ScreenFromOutput(WlOutput).Bounds.Size.ToSize(1);
+        public Size MaxAutoSizeHint => _platform.WlScreens.AllScreens.Select(static s => s.Bounds.Size.ToSize(s.Scaling)).OrderByDescending(static x => x.Width + x.Height).FirstOrDefault();
 
         public Size ClientSize { get; private set; }
 
