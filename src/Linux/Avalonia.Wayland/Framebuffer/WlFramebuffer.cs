@@ -23,7 +23,7 @@ namespace Avalonia.Wayland.Framebuffer
         public void Dispose()
         {
             _wlSurface.Attach(_wlBuffer, 0, 0);
-            _wlSurface.Damage(0, 0, Size.Width, Size.Height);
+            _wlSurface.DamageBuffer(0, 0, Size.Width, Size.Height);
             _wlSurface.Commit();
         }
 
