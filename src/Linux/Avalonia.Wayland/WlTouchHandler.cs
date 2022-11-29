@@ -40,7 +40,7 @@ namespace Avalonia.Wayland
             _window = _platform.WlScreens.WindowFromSurface(surface);
             if (_window?.InputRoot is null)
                 return;
-            _touchPosition = new Point((double)x, (double)y);
+            _touchPosition = new Point((double)x, (double)y) / _window.RenderScaling;
             var args = new RawTouchEventArgs(TouchDevice, time, _window.InputRoot, RawPointerEventType.TouchBegin, _touchPosition, _wlInputDevice.RawInputModifiers, id);
             _window.Input?.Invoke(args);
         }
@@ -59,7 +59,7 @@ namespace Avalonia.Wayland
         {
             if (_window?.InputRoot is null)
                 return;
-            _touchPosition = new Point((double)x, (double)y);
+            _touchPosition = new Point((double)x, (double)y) / _window.RenderScaling;
             var args = new RawTouchEventArgs(TouchDevice, time, _window.InputRoot, RawPointerEventType.TouchUpdate, _touchPosition, _wlInputDevice.RawInputModifiers, id);
             _window.Input?.Invoke(args);
         }

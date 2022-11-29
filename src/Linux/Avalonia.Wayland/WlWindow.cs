@@ -11,18 +11,19 @@ using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
-using Avalonia.Utilities;
 using Avalonia.Wayland.Egl;
 using Avalonia.Wayland.Framebuffer;
+using NWayland.Protocols.FractionalScaleV1;
 using NWayland.Protocols.Wayland;
 using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlCallback.IEvents, XdgSurface.IEvents, WpFractionalScaleV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
+        private readonly WpFractionalScaleV1? _wpFractionalScale;
         private readonly IntPtr _eglWindow;
 
         private WlCallback? _frameCallback;
@@ -31,11 +32,14 @@ namespace Avalonia.Wayland
         {
             _platform = platform;
             WlSurface = platform.WlCompositor.CreateSurface();
-            WlSurface.Events = this;
             XdgSurface = platform.XdgWmBase.GetXdgSurface(WlSurface);
             XdgSurface.Events = this;
 
-            platform.WlScreens.AddWindow(this);
+            if (platform.WpFractionalScaleManager is not null)
+            {
+                _wpFractionalScale = platform.WpFractionalScaleManager.GetFractionalScale(WlSurface);
+                _wpFractionalScale.Events = this;
+            }
 
             TextInputMethod = platform.WlTextInputMethod;
 
@@ -57,6 +61,8 @@ namespace Avalonia.Wayland
             }
 
             Surfaces = surfaces.ToArray();
+
+            platform.WlScreens.AddWindow(this);
         }
 
         public IPlatformHandle Handle { get; }
@@ -173,19 +179,6 @@ namespace Avalonia.Wayland
                 DoResize(clientSize);
         }
 
-        public void OnEnter(WlSurface eventSender, WlOutput output)
-        {
-            WlOutput = output;
-            var screen = _platform.WlScreens.ScreenFromOutput(output);
-            if (MathUtilities.AreClose(screen.Scaling, RenderScaling))
-                return;
-            RenderScaling = screen.Scaling;
-            ScalingChanged?.Invoke(RenderScaling);
-            WlSurface.SetBufferScale((int)RenderScaling);
-        }
-
-        public void OnLeave(WlSurface eventSender, WlOutput output) => WlOutput = null;
-
         public void OnDone(WlCallback eventSender, uint callbackData)
         {
             _frameCallback!.Dispose();
@@ -203,11 +196,18 @@ namespace Avalonia.Wayland
                 DoPaint();
         }
 
+        public void OnPreferredScale(WpFractionalScaleV1 eventSender, uint scale)
+        {
+            RenderScaling = scale / 120d;
+            ScalingChanged?.Invoke(RenderScaling);
+        }
+
         public virtual void Dispose()
         {
             _platform.WlScreens.RemoveWindow(this);
             if (_eglWindow != IntPtr.Zero)
                 LibWaylandEgl.wl_egl_window_destroy(_eglWindow);
+            _wpFractionalScale?.Dispose();
             _wlFramebufferSurface.Dispose();
             XdgSurface.Dispose();
             WlSurface.Dispose();

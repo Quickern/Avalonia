@@ -10,6 +10,7 @@ using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
 using Avalonia.Wayland;
+using NWayland.Protocols.FractionalScaleV1;
 using NWayland.Protocols.PointerGesturesUnstableV1;
 using NWayland.Protocols.TextInputUnstableV3;
 using NWayland.Protocols.Wayland;
@@ -36,6 +37,7 @@ namespace Avalonia.Wayland
             WlDataDeviceManager = WlRegistryHandler.BindRequiredInterface(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
             XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
             XdgActivation = WlRegistryHandler.BindRequiredInterface(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
+            WpFractionalScaleManager = WlRegistryHandler.Bind(WpFractionalScaleManagerV1.BindFactory, WpFractionalScaleManagerV1.InterfaceName, WpFractionalScaleManagerV1.InterfaceVersion);
             ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
             ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             ZwpTextInput = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
@@ -103,6 +105,8 @@ namespace Avalonia.Wayland
         internal XdgWmBase XdgWmBase { get; }
 
         internal XdgActivationV1 XdgActivation { get; }
+
+        internal WpFractionalScaleManagerV1? WpFractionalScaleManager { get; }
 
         internal ZxdgDecorationManagerV1? ZxdgDecorationManager { get; }
 

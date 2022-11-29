@@ -59,7 +59,7 @@ namespace Avalonia.Wayland
             _pointerWindow = _platform.WlScreens.WindowFromSurface(surface);
             if (_pointerWindow?.InputRoot is null)
                 return;
-            _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
+            _pointerPosition = new Point((int)surfaceX, (int)surfaceY) / _pointerWindow.RenderScaling;
             var args = new RawPointerEventArgs(MouseDevice, 0, _pointerWindow.InputRoot, RawPointerEventType.Move, _pointerPosition, _wlInputDevice.RawInputModifiers);
             _pointerWindow.Input?.Invoke(args);
         }
@@ -81,7 +81,7 @@ namespace Avalonia.Wayland
         {
             if (_pointerWindow?.InputRoot is null)
                 return;
-            _pointerPosition = new Point((int)surfaceX, (int)surfaceY);
+            _pointerPosition = new Point((int)surfaceX, (int)surfaceY) / _pointerWindow.RenderScaling;
             var args = new RawPointerEventArgs(MouseDevice, time, _pointerWindow.InputRoot, RawPointerEventType.Move, _pointerPosition, _wlInputDevice.RawInputModifiers);
             _pointerWindow.Input?.Invoke(args);
         }
@@ -180,14 +180,14 @@ namespace Avalonia.Wayland
             if (_pinchGestureWindow?.InputRoot is null)
                 return;
 
-            var deltaMagnify = new Vector((double)dx, (double)dy);
+            var deltaMagnify = new Vector((double)dx, (double)dy) * (double)scale;
             if (deltaMagnify != Vector.Zero)
             {
                 var magnifyArgs = new RawPointerGestureEventArgs(MouseDevice, time, _pinchGestureWindow.InputRoot, RawPointerEventType.Magnify, _pointerPosition, deltaMagnify, _wlInputDevice.RawInputModifiers);
                 _pinchGestureWindow.Input?.Invoke(magnifyArgs);
             }
 
-            var rad = Math.PI / 180 * (double)rotation;
+            var rad = Math.PI / 180 * (double)rotation * (double)scale;
             var deltaRotation = new Vector(Math.Cos(rad), Math.Sin(rad));
             var rotateArgs = new RawPointerGestureEventArgs(MouseDevice, time, _pinchGestureWindow.InputRoot, RawPointerEventType.Rotate, _pointerPosition, deltaRotation, _wlInputDevice.RawInputModifiers);
             _pinchGestureWindow.Input?.Invoke(rotateArgs);
