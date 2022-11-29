@@ -19,7 +19,7 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlCallback.IEvents, XdgSurface.IEvents, WpFractionalScaleV1.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, ITopLevelImplWithTextInputMethod, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents, WpFractionalScaleV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
@@ -45,7 +45,7 @@ namespace Avalonia.Wayland
 
             var screens = _platform.WlScreens.AllScreens;
             ClientSize = screens.Count > 0
-                ? new Size(screens[0].WorkingArea.Width * 0.75, screens[0].WorkingArea.Height * 0.7)
+                ? new Size(screens[0].Bounds.Width * 0.75, screens[0].Bounds.Height * 0.7)
                 : new Size(400, 600);
 
             _wlFramebufferSurface = new WlFramebufferSurface(platform, this);
@@ -141,9 +141,9 @@ namespace Avalonia.Wayland
 
         public void SetInputRoot(IInputRoot inputRoot) => InputRoot = inputRoot;
 
-        public Point PointToClient(PixelPoint point) => point.ToPoint(1);
+        public Point PointToClient(PixelPoint point) => point.ToPoint(RenderScaling);
 
-        public PixelPoint PointToScreen(Point point) => new((int)point.X, (int)point.Y);
+        public PixelPoint PointToScreen(Point point) => new((int)(point.X * RenderScaling), (int)(point.Y * RenderScaling));
 
         public void SetCursor(ICursorImpl? cursor) => _platform.WlInputDevice.PointerHandler?.SetCursor(cursor as WlCursor);
 
@@ -185,6 +185,10 @@ namespace Avalonia.Wayland
             _frameCallback = null;
             DoPaint();
         }
+
+        public void OnEnter(WlSurface eventSender, WlOutput output) => WlOutput = output;
+
+        public void OnLeave(WlSurface eventSender, WlOutput output) => WlOutput = null;
 
         public void OnConfigure(XdgSurface eventSender, uint serial)
         {
