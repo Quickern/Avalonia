@@ -134,7 +134,7 @@ namespace Avalonia.Wayland
                 return new CompositingRenderer(root, _platform.Compositor!);
             if (_platform.Options.UseDeferredRendering)
                 return new DeferredRenderer(root, loop);
-            return new ImmediateRenderer(root);
+            return new ImmediateRenderer((Visual)root);
         }
 
         public void Invalidate(Rect rect) => WlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)(rect.Width * RenderScaling), (int)(rect.Height * RenderScaling));

@@ -80,12 +80,12 @@ namespace Avalonia.Wayland
 
         public void Dispose() => _wlDataDevice.Dispose();
 
-        private static TopLevel? FindRoot(IInteractive? interactive)
+        private static TopLevel? FindRoot(object? element)
         {
-            while (interactive is not null && interactive is not IVisual)
-                interactive = interactive.InteractiveParent;
-            var visual = interactive as IVisual;
-            return visual?.VisualRoot as TopLevel;
+            while (element is Interactive interactive && element is not Visual)
+                element = interactive.GetInteractiveParent();
+            var visual = (Visual?)element;
+            return visual?.GetVisualRoot() as TopLevel;
         }
 
         private sealed class WlDataDeviceHandler : IDisposable, WlDataDevice.IEvents
