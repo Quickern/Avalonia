@@ -131,7 +131,7 @@ namespace Avalonia.FreeDesktop
 #endif
             var tid = s_trayIconInstanceId++;
 
-            _sysTrayServiceName = $"org.kde.StatusNotifierItem-{pid}-{tid}";
+            _sysTrayServiceName = FormattableString.Invariant($"org.kde.StatusNotifierItem-{pid}-{tid}");
             _statusNotifierItemDbusObj = new StatusNotifierItemDbusObj(_dbusMenuPath);
 
             try
