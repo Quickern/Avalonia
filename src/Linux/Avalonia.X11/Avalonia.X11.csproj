@@ -12,4 +12,6 @@
         <Compile Include="..\..\Shared\RawEventGrouping.cs" />
     </ItemGroup>
     <Import Project="..\..\..\build\SourceGenerators.props" />
+    <Import Project="..\..\build\SourceGenerators.props" />
+    <Import Project="..\..\build\TrimmingEnable.props" />
 </Project>
