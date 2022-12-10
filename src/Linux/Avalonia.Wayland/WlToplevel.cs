@@ -28,12 +28,22 @@ namespace Avalonia.Wayland
             _xdgToplevel.Events = this;
             if (platform.Options.AppId is not null)
                 _xdgToplevel.SetAppId(platform.Options.AppId);
-            _toplevelDecoration = platform.ZxdgDecorationManager?.GetToplevelDecoration(_xdgToplevel);
-            if (_toplevelDecoration is not null)
+
+            if (platform.ZxdgDecorationManager is not null)
+            {
+                _toplevelDecoration = platform.ZxdgDecorationManager.GetToplevelDecoration(_xdgToplevel);
                 _toplevelDecoration.Events = this;
-            _exported = platform.ZxdgExporter?.ExportToplevel(WlSurface);
-            if (_exported is not null)
+            }
+            else
+            {
+                IsClientAreaExtendedToDecorations = true;
+            }
+
+            if (platform.ZxdgExporter is not null)
+            {
+                _exported = platform.ZxdgExporter.ExportToplevel(WlSurface);
                 _exported.Events = this;
+            }
         }
 
         public Func<bool> Closing { get; set; }
@@ -46,7 +56,7 @@ namespace Avalonia.Wayland
 
         public IStorageProvider StorageProvider => null!; // WlStorageProviderFactory is used instead to provide a managed fallback
 
-        public bool IsClientAreaExtendedToDecorations { get; private set; } = true;
+        public bool IsClientAreaExtendedToDecorations { get; private set; }
 
         public bool NeedsManagedDecorations => IsClientAreaExtendedToDecorations && _extendClientAreaChromeHints.HasAnyFlag(ExtendClientAreaChromeHints.PreferSystemChrome | ExtendClientAreaChromeHints.SystemChrome);
 

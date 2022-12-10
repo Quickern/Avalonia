@@ -30,7 +30,8 @@ namespace Avalonia.Wayland
             _wlShmPool= platform.WlShm.CreatePool(_fd, _size);
             _wlBuffer = _wlShmPool.CreateBuffer(0, cursor.PixelSize.Width, cursor.PixelSize.Height, _stride, WlShm.FormatEnum.Argb8888);
             var platformRenderInterface = AvaloniaLocator.Current.GetRequiredService<IPlatformRenderInterface>();
-            using var renderTarget = platformRenderInterface.CreateRenderTarget(new[] { this });
+            using var cpuContext = platformRenderInterface.CreateBackendContext(null);
+            using var renderTarget = cpuContext.CreateRenderTarget(new[] { this });
             using var ctx = renderTarget.CreateDrawingContext(null);
             var r = new Rect(cursor.PixelSize.ToSize(1));
             ctx.DrawBitmap(RefCountable.CreateUnownedNotClonable(cursor), 1, r, r);

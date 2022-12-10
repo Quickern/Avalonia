@@ -3,7 +3,7 @@ using Avalonia.OpenGL.Egl;
 
 namespace Avalonia.Wayland.Egl
 {
-    internal class WlEglSurfaceInfo : EglGlPlatformSurfaceBase.IEglWindowGlPlatformSurfaceInfo
+    internal class WlEglSurfaceInfo : EglGlPlatformSurface.IEglWindowGlPlatformSurfaceInfo
     {
         public WlEglSurfaceInfo(WlWindow wlWindow, IntPtr eglWindow)
         {

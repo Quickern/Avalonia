@@ -18,7 +18,8 @@ namespace Avalonia.Wayland
             _width = Math.Min(bitmap.PixelSize.Width, 128);
             _height = Math.Min(bitmap.PixelSize.Height, 128);
             _bdata = new uint[_width * _height];
-            using var rt = AvaloniaLocator.Current.GetRequiredService<IPlatformRenderInterface>().CreateRenderTarget(new[] { this });
+            using var cpuContext = AvaloniaLocator.Current.GetRequiredService<IPlatformRenderInterface>().CreateBackendContext(null);
+            using var rt = cpuContext.CreateRenderTarget(new[] { this } );
             using var ctx = rt.CreateDrawingContext(null);
             ctx.DrawBitmap(bitmap.PlatformImpl, 1, new Rect(bitmap.Size), new Rect(0, 0, _width, _height));
             Data = new uint[_width * _height + 2];

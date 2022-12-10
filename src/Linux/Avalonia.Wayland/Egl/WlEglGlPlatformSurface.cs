@@ -1,3 +1,5 @@
+using System;
+using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.OpenGL.Surfaces;
 
@@ -5,54 +7,50 @@ namespace Avalonia.Wayland.Egl
 {
     internal class WlEglGlPlatformSurface : EglGlPlatformSurfaceBase
     {
-        private readonly EglPlatformOpenGlInterface _egl;
         private readonly WlEglSurfaceInfo _info;
 
-        public WlEglGlPlatformSurface(EglPlatformOpenGlInterface egl, WlEglSurfaceInfo info)
+        public WlEglGlPlatformSurface(WlEglSurfaceInfo info)
         {
-            _egl = egl;
             _info = info;
         }
 
-        public override IGlPlatformSurfaceRenderTarget CreateGlRenderTarget()
+        public override IGlPlatformSurfaceRenderTarget CreateGlRenderTarget(IGlContext context)
         {
-            var glSurface = _egl.CreateWindowSurface(_info.Handle);
-            return new RenderTarget(_egl, glSurface, _info);
+            var eglContext = (EglContext)context;
+            var glSurface = eglContext.Display.CreateWindowSurface(_info.Handle);
+            return new RenderTarget(glSurface, eglContext, _info);
         }
 
         private sealed class RenderTarget : EglPlatformSurfaceRenderTargetBase
         {
-            private readonly EglPlatformOpenGlInterface _egl;
             private readonly WlEglSurfaceInfo _info;
+            private readonly IntPtr _handle;
 
-            private EglSurface _glSurface;
+            private EglSurface? _glSurface;
             private PixelSize _currentSize;
 
-            public RenderTarget(EglPlatformOpenGlInterface egl, EglSurface glSurface, WlEglSurfaceInfo info) : base(egl)
+            public RenderTarget(EglSurface glSurface, EglContext context, WlEglSurfaceInfo info) : base(context)
             {
-                _egl = egl;
                 _glSurface = glSurface;
                 _info = info;
                 _currentSize = info.Size;
+                _handle = _info.Handle;
             }
 
-            public override void Dispose()
-            {
-                _glSurface.Dispose();
-                base.Dispose();
-            }
+            public override void Dispose() => _glSurface?.Dispose();
 
-            public override IGlPlatformSurfaceRenderingSession BeginDraw()
+            public override IGlPlatformSurfaceRenderingSession BeginDrawCore()
             {
-                if (_info.Size != _currentSize)
+                if (_info.Size != _currentSize || _handle != _info.Handle || _glSurface is null)
                 {
-                    _glSurface.Dispose();
-                    _glSurface = _egl.CreateWindowSurface(_info.Handle);
+                    _glSurface?.Dispose();
+                    _glSurface = null;
+                    _glSurface = Context.Display.CreateWindowSurface(_info.Handle);
                     _currentSize = _info.Size;
                 }
 
                 _info.WlWindow.RequestFrame();
-                return base.BeginDraw(_glSurface, _info);
+                return BeginDraw(_glSurface, _info.Size, _info.Scaling);
             }
         }
     }

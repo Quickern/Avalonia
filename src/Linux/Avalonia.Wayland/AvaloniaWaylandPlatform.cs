@@ -71,24 +71,34 @@ namespace Avalonia.Wayland
 
             DBusHelper.TryInitialize();
 
-            IPlatformOpenGlInterface? gl = null;
+            IPlatformGraphics? platformGraphics = null;
+
             if (options.UseGpu)
             {
                 const int EGL_PLATFORM_WAYLAND_KHR = 0x31D8;
-                gl = EglPlatformOpenGlInterface.TryCreate(() => new EglDisplay(new EglInterface(), true, EGL_PLATFORM_WAYLAND_KHR, WlDisplay.Handle, null));
-                if (gl is not null)
-                    AvaloniaLocator.CurrentMutable
-                        .Bind<IPlatformOpenGlInterface>().ToConstant(gl)
-                        .Bind<IPlatformGpu>().ToConstant(gl);
+                platformGraphics = EglPlatformGraphics.TryCreate(() => new EglDisplay(new EglDisplayCreationOptions
+                {
+                    PlatformType = EGL_PLATFORM_WAYLAND_KHR,
+                    PlatformDisplay = WlDisplay.Handle,
+                    SupportsContextSharing = true,
+                    SupportsMultipleContexts = true
+                }));
+
+                if (platformGraphics is not null)
+                    AvaloniaLocator.CurrentMutable.Bind<IPlatformGraphics>().ToConstant(platformGraphics);
             }
 
             if (options.UseCompositor)
-                Compositor = new Compositor(AvaloniaLocator.Current.GetRequiredService<IRenderLoop>(), gl);
+                Compositor = new Compositor(AvaloniaLocator.Current.GetRequiredService<IRenderLoop>(), platformGraphics);
+            else
+                RenderInterface = new PlatformRenderInterfaceContextManager(platformGraphics);
         }
 
         internal WaylandPlatformOptions Options { get; }
 
         internal Compositor? Compositor { get; }
+
+        internal PlatformRenderInterfaceContextManager? RenderInterface { get; }
 
         internal WlDisplay WlDisplay { get; }
 

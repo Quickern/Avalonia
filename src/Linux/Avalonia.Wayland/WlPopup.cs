@@ -19,6 +19,7 @@ namespace Avalonia.Wayland
         {
             _platform = platform;
             _xdgPositioner = platform.XdgWmBase.CreatePositioner();
+            _xdgPositioner.SetReactive();
             Parent = parent;
         }
 
@@ -44,7 +45,6 @@ namespace Avalonia.Wayland
         public void Update(PopupPositionerParameters parameters)
         {
             Resize(parameters.Size);
-            _xdgPositioner.SetReactive();
             _xdgPositioner.SetAnchor(ParsePopupAnchor(parameters.Anchor));
             _xdgPositioner.SetGravity(ParsePopupGravity(parameters.Gravity));
             _xdgPositioner.SetOffset((int)parameters.Offset.X, (int)parameters.Offset.Y);
@@ -54,7 +54,7 @@ namespace Avalonia.Wayland
             if (_xdgPopup is not null && XdgSurfaceConfigureSerial != 0)
             {
                 _xdgPositioner.SetParentConfigure(Parent!.XdgSurfaceConfigureSerial);
-                _xdgPopup.Reposition(_xdgPositioner, ++_repositionToken);
+                _xdgPopup.Reposition(_xdgPositioner, _repositionToken++);
             }
         }
 

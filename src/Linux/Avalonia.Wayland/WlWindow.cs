@@ -51,12 +51,12 @@ namespace Avalonia.Wayland
             _wlFramebufferSurface = new WlFramebufferSurface(platform, this);
             var surfaces = new List<object> { _wlFramebufferSurface };
 
-            var glFeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
-            if (glFeature is EglPlatformOpenGlInterface egl)
+            var platformGraphics = AvaloniaLocator.Current.GetService<IPlatformGraphics>();
+            if (platformGraphics is EglPlatformGraphics)
             {
                 _eglWindow = LibWaylandEgl.wl_egl_window_create(WlSurface.Handle, (int)ClientSize.Width, (int)ClientSize.Height);
                 var surfaceInfo = new WlEglSurfaceInfo(this, _eglWindow);
-                var platformSurface = new WlEglGlPlatformSurface(egl, surfaceInfo);
+                var platformSurface = new WlEglGlPlatformSurface(surfaceInfo);
                 surfaces.Insert(0, platformSurface);
             }
 
@@ -131,10 +131,10 @@ namespace Avalonia.Wayland
             if (customRendererFactory is not null)
                 return customRendererFactory.Create(root, loop);
             if (_platform.Options.UseCompositor)
-                return new CompositingRenderer(root, _platform.Compositor!);
+                return new CompositingRenderer(root, _platform.Compositor!, () => Surfaces);
             if (_platform.Options.UseDeferredRendering)
-                return new DeferredRenderer(root, loop);
-            return new ImmediateRenderer((Visual)root);
+                return new DeferredRenderer(root, loop, () => _platform.RenderInterface!.CreateRenderTarget(Surfaces), _platform.RenderInterface);
+            return new ImmediateRenderer((Visual)root, () => _platform.RenderInterface!.CreateRenderTarget(Surfaces), _platform.RenderInterface);
         }
 
         public void Invalidate(Rect rect) => WlSurface.DamageBuffer((int)rect.X, (int)rect.Y, (int)(rect.Width * RenderScaling), (int)(rect.Height * RenderScaling));
@@ -165,8 +165,8 @@ namespace Avalonia.Wayland
 
         public void Hide()
         {
-            WlSurface.Attach(null, 0, 0);
-            WlSurface.Commit();
+            //WlSurface.Attach(null, 0, 0);
+            //WlSurface.Commit();
         }
 
         public void Activate() { }
@@ -196,8 +196,6 @@ namespace Avalonia.Wayland
                 return;
             XdgSurfaceConfigureSerial = serial;
             XdgSurface.AckConfigure(serial);
-            if (_frameCallback is null)
-                DoPaint();
         }
 
         public void OnPreferredScale(WpFractionalScaleV1 eventSender, uint scale)
