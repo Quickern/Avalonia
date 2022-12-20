@@ -13,21 +13,15 @@ static class EglDisplayUtils
         var egl = options.Egl;
         var display = IntPtr.Zero;
         if (options.PlatformType == null)
-        {
-            if (display == IntPtr.Zero)
-                display = egl.GetDisplay(IntPtr.Zero);
-        }
-        else
-        {
-            if (!egl.IsGetPlatformDisplayExtAvailable)
-                throw new OpenGlException("eglGetPlatformDisplayEXT is not supported by libegl");
-
-            display = egl.GetPlatformDisplayExt(options.PlatformType.Value, options.PlatformDisplay,
-                options.PlatformDisplayAttrs);
-        }
+            display = egl.GetDisplay(IntPtr.Zero);
+        else if (egl.IsGetPlatformDisplayAvailable)
+            display = egl.GetPlatformDisplay(options.PlatformType.Value, options.PlatformDisplay, options.PlatformDisplayAttrs);
+        else if (egl.IsGetPlatformDisplayExtAvailable)
+            display = egl.GetPlatformDisplayExt(options.PlatformType.Value, options.PlatformDisplay, options.PlatformDisplayAttrs);
 
         if (display == IntPtr.Zero)
             throw OpenGlException.GetFormattedException("eglGetDisplay", egl);
+
         return display;
     }
 

@@ -35,7 +35,7 @@ namespace Avalonia.Wayland
             _bdata = null;
         }
 
-        internal uint[]  Data { get; }
+        internal uint[] Data { get; }
 
         public unsafe void Save(Stream outputStream)
         {

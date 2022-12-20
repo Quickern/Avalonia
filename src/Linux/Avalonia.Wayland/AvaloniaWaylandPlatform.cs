@@ -78,6 +78,7 @@ namespace Avalonia.Wayland
                 const int EGL_PLATFORM_WAYLAND_KHR = 0x31D8;
                 platformGraphics = EglPlatformGraphics.TryCreate(() => new EglDisplay(new EglDisplayCreationOptions
                 {
+                    Egl = new EglInterface(),
                     PlatformType = EGL_PLATFORM_WAYLAND_KHR,
                     PlatformDisplay = WlDisplay.Handle,
                     SupportsContextSharing = true,
