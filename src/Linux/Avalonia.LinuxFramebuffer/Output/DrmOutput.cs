@@ -7,10 +7,6 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.OpenGL.Surfaces;
 using Avalonia.Platform;
-using Avalonia.Platform.Interop;
-
-using JetBrains.Annotations;
-
 using static Avalonia.FreeDesktop.LibC;
 using static Avalonia.LinuxFramebuffer.Output.LibDrm;
 
@@ -51,7 +47,7 @@ namespace Avalonia.LinuxFramebuffer.Output
                 _outputOptions = options;
             Init(card, resources, connector, modeInfo);
         }
-        public DrmOutput(string path = null, bool connectorsForceProbe = false, [CanBeNull] DrmOutputOptions options = null)
+        public DrmOutput(string path = null, bool connectorsForceProbe = false, DrmOutputOptions? options = null)
         {
             if(options != null) 
                 _outputOptions = options;
