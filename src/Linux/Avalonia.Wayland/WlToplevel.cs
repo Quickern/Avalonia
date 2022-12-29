@@ -46,7 +46,7 @@ namespace Avalonia.Wayland
             }
         }
 
-        public Func<bool> Closing { get; set; }
+        public Func<WindowCloseReason, bool> Closing { get; set; }
 
         public Action GotInputWhenDisabled { get; set; }
 
@@ -206,7 +206,7 @@ namespace Avalonia.Wayland
             PendingSize = new Size(width, height);
         }
 
-        public void OnClose(XdgToplevel eventSender) => Closing.Invoke();
+        public void OnClose(XdgToplevel eventSender) => Closing.Invoke(WindowCloseReason.WindowClosing);
 
         public void OnConfigureBounds(XdgToplevel eventSender, int width, int height)
         {

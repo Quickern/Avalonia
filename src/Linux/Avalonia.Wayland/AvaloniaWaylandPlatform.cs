@@ -173,7 +173,7 @@ namespace Avalonia
 {
     public static class AvaloniaWaylandPlatformExtensions
     {
-        public static T UseWayland<T>(this T builder) where T : AppBuilderBase<T>, new() =>
+        public static void UseWayland(this AppBuilder builder) =>
             builder.UseWindowingSubsystem(static () =>
             {
                 var options = AvaloniaLocator.Current.GetService<WaylandPlatformOptions>() ?? new WaylandPlatformOptions();
