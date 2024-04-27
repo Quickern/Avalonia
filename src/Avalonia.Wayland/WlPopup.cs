@@ -18,7 +18,7 @@ namespace Avalonia.Wayland
         internal WlPopup(AvaloniaWaylandPlatform platform, WlWindow parent) : base(platform)
         {
             _platform = platform;
-            _xdgPositioner = platform.XdgWmBase.CreatePositioner();
+            _xdgPositioner = null!; // TODO: platform.XdgWmBase.CreatePositioner();
             _xdgPositioner.SetReactive();
             Parent = parent;
         }
@@ -33,7 +33,7 @@ namespace Avalonia.Wayland
         {
             if (_xdgPopup is null)
             {
-                _xdgPopup = XdgSurface.GetPopup(Parent!.XdgSurface, _xdgPositioner);
+                _xdgPopup = null!; //TODO: XdgSurface.GetPopup(Parent!.XdgSurface, _xdgPositioner);
                 _xdgPopup.Events = this;
                 if (_isLightDismissEnabled)
                     _xdgPopup.Grab(_platform.WlSeat, _platform.WlInputDevice.UserActionDownSerial);

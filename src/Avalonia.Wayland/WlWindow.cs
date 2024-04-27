@@ -17,7 +17,7 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal abstract class WlWindow : IWindowBaseImpl, WlSurface.IEvents, WlCallback.IEvents, XdgSurface.IEvents, WpFractionalScaleV1.IEvents
+    internal abstract class WlWindow : IWindowBaseImpl, WlSurface.IEvents, WlCallback.IEvents, WlShellSurface.IEvents, WpFractionalScaleV1.IEvents
     {
         private readonly AvaloniaWaylandPlatform _platform;
         private readonly WlFramebufferSurface _wlFramebufferSurface;
@@ -25,7 +25,7 @@ namespace Avalonia.Wayland
         private readonly WpViewport? _wpViewport;
         private readonly WpFractionalScaleV1? _wpFractionalScale;
         private readonly object _resizeLock = new();
-
+        
         private bool _didReceiveInitialConfigure;
         private WlCallback? _frameCallback;
         private OrgKdeKwinBlur? _blur;
@@ -35,7 +35,7 @@ namespace Avalonia.Wayland
 
         internal struct State
         {
-            public uint ConfigureSerial;
+            // public uint ConfigureSerial;
             public PixelSize Size;
             public PixelSize Bounds;
             public PixelPoint Position;
@@ -49,8 +49,8 @@ namespace Avalonia.Wayland
         {
             _platform = platform;
             WlSurface = platform.WlCompositor.CreateSurface();
-            XdgSurface = platform.XdgWmBase.GetXdgSurface(WlSurface);
-            XdgSurface.Events = this;
+            WlShellSurface = platform.WlShell.GetShellSurface(WlSurface);
+            WlShellSurface.Events = this;
 
             if (platform.WpViewporter is not null && platform.WpFractionalScaleManager is not null)
             {
@@ -62,6 +62,9 @@ namespace Avalonia.Wayland
             var surfaces = new List<object>(2);
 
             var platformGraphics = AvaloniaLocator.Current.GetService<IPlatformGraphics>();
+            
+            Console.WriteLine($"platformGr: {platformGraphics?.GetType().FullName ?? "[null]"}");
+            
             if (platformGraphics is EglPlatformGraphics)
             {
                 var surfaceInfo = new WlEglSurfaceInfo(this);
@@ -125,7 +128,7 @@ namespace Avalonia.Wayland
 
         internal WlSurface WlSurface { get; }
 
-        internal XdgSurface XdgSurface { get; }
+        internal WlShellSurface WlShellSurface { get; }
 
         internal WlOutput? WlOutput { get; private set; }
 
@@ -207,20 +210,6 @@ namespace Avalonia.Wayland
             return null;
         }
 
-        public void OnConfigure(XdgSurface eventSender, uint serial)
-        {
-            if (AppliedState.ConfigureSerial == serial)
-                return;
-
-            PendingState.ConfigureSerial = serial;
-
-            lock (_resizeLock)
-            {
-                XdgSurface.AckConfigure(serial);
-                ApplyConfigure();
-            }
-        }
-
         public void OnPreferredScale(WpFractionalScaleV1 eventSender, uint scale)
         {
             RenderScaling = scale / 120d;
@@ -238,7 +227,7 @@ namespace Avalonia.Wayland
             _wlFramebufferSurface.Dispose();
             _wlEglGlPlatformSurface?.Dispose();
             _wpFractionalScale?.Dispose();
-            XdgSurface.Dispose();
+            WlShellSurface.Dispose();
             WlSurface.Dispose();
         }
 
@@ -313,6 +302,36 @@ namespace Avalonia.Wayland
             }
 
             return false;
+        }
+
+        public void OnPing(WlShellSurface eventSender, uint serial)
+        {
+            eventSender.Pong(serial);
+        }
+
+        public void OnConfigure(WlShellSurface eventSender, WlShellSurface.ResizeEnum edges, int width, int height)
+        {
+            Console.WriteLine($"[{GetType().Name}] OnConfigure: {edges} => {width}x{height}");
+            
+            // if (AppliedState.ConfigureSerial == serial)
+            //     return;
+
+            PendingState.WindowState = WindowState.FullScreen;
+
+            var size = new PixelSize(width, height);
+            if (size != default)
+                PendingState.Size = size;
+            PendingState.Bounds = new PixelSize(width, height);
+
+            lock (_resizeLock)
+            {
+                ApplyConfigure();
+            }
+        }
+
+        public void OnPopupDone(WlShellSurface eventSender)
+        {
+            throw new NotImplementedException();
         }
     }
 }

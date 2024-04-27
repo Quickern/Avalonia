@@ -23,7 +23,7 @@ using NWayland.Protocols.XdgShell;
 
 namespace Avalonia.Wayland
 {
-    internal class AvaloniaWaylandPlatform : IWindowingPlatform, IDisposable, XdgWmBase.IEvents
+    internal class AvaloniaWaylandPlatform : IWindowingPlatform, IDisposable
     {
         public AvaloniaWaylandPlatform(WaylandPlatformOptions options)
         {
@@ -37,17 +37,16 @@ namespace Avalonia.Wayland
             WlSeat = WlRegistryHandler.BindRequiredInterface(WlSeat.BindFactory, WlSeat.InterfaceName, WlSeat.InterfaceVersion);
             WlShm = WlRegistryHandler.BindRequiredInterface(WlShm.BindFactory, WlShm.InterfaceName, WlShm.InterfaceVersion);
             WlDataDeviceManager = WlRegistryHandler.BindRequiredInterface(WlDataDeviceManager.BindFactory, WlDataDeviceManager.InterfaceName, WlDataDeviceManager.InterfaceVersion);
-            XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
-            XdgActivation = WlRegistryHandler.BindRequiredInterface(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
+            // XdgWmBase = WlRegistryHandler.BindRequiredInterface(XdgWmBase.BindFactory, XdgWmBase.InterfaceName, XdgWmBase.InterfaceVersion);
+            WlShell = WlRegistryHandler.BindRequiredInterface(WlShell.BindFactory, WlShell.InterfaceName, WlShell.InterfaceVersion);
+            //XdgActivation = WlRegistryHandler.BindRequiredInterface(XdgActivationV1.BindFactory, XdgActivationV1.InterfaceName, XdgActivationV1.InterfaceVersion);
             WpViewporter = WlRegistryHandler.Bind(WpViewporter.BindFactory, WpViewporter.InterfaceName, WpViewporter.InterfaceVersion);
             WpFractionalScaleManager = WlRegistryHandler.Bind(WpFractionalScaleManagerV1.BindFactory, WpFractionalScaleManagerV1.InterfaceName, WpFractionalScaleManagerV1.InterfaceVersion);
-            ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
-            ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
+            // ZxdgDecorationManager = WlRegistryHandler.Bind(ZxdgDecorationManagerV1.BindFactory, ZxdgDecorationManagerV1.InterfaceName, ZxdgDecorationManagerV1.InterfaceVersion);
+            // ZxdgExporter = WlRegistryHandler.Bind(ZxdgExporterV2.BindFactory, ZxdgExporterV2.InterfaceName, ZxdgExporterV2.InterfaceVersion);
             ZwpPointerGestures = WlRegistryHandler.Bind(ZwpPointerGesturesV1.BindFactory, ZwpPointerGesturesV1.InterfaceName, ZwpPointerGesturesV1.InterfaceVersion);
             ZwpTextInputManagerV3 = WlRegistryHandler.Bind(ZwpTextInputManagerV3.BindFactory, ZwpTextInputManagerV3.InterfaceName, ZwpTextInputManagerV3.InterfaceVersion);
             KdeKwinBlurManager = WlRegistryHandler.Bind(OrgKdeKwinBlurManager.BindFactory, OrgKdeKwinBlurManager.InterfaceName, OrgKdeKwinBlurManager.InterfaceVersion);
-
-            XdgWmBase.Events = this;
 
             WlScreens = new WlScreens(this);
             WlInputDevice = new WlInputDevice(this);
@@ -94,17 +93,17 @@ namespace Avalonia.Wayland
 
         internal WlDataDeviceManager WlDataDeviceManager { get; }
 
-        internal XdgWmBase XdgWmBase { get; }
+        internal WlShell WlShell { get; }
 
-        internal XdgActivationV1 XdgActivation { get; }
+        // internal XdgActivationV1 XdgActivation { get; }
 
         internal WpViewporter? WpViewporter { get; }
 
         internal WpFractionalScaleManagerV1? WpFractionalScaleManager { get; }
 
-        internal ZxdgDecorationManagerV1? ZxdgDecorationManager { get; }
+        // internal ZxdgDecorationManagerV1? ZxdgDecorationManager { get; }
 
-        internal ZxdgExporterV2? ZxdgExporter { get; }
+        // internal ZxdgExporterV2? ZxdgExporter { get; }
 
         internal ZwpPointerGesturesV1? ZwpPointerGestures { get; }
 
@@ -133,13 +132,13 @@ namespace Avalonia.Wayland
             return dbusTrayIcon;
         }
 
-        public void OnPing(XdgWmBase eventSender, uint serial) => XdgWmBase.Pong(serial);
+        // public void OnPing(XdgWmBase eventSender, uint serial) => XdgWmBase.Pong(serial);
 
         public void Dispose()
         {
             KdeKwinBlurManager?.Dispose();
-            ZxdgDecorationManager?.Dispose();
-            ZxdgExporter?.Dispose();
+            // ZxdgDecorationManager?.Dispose();
+            // ZxdgExporter?.Dispose();
             ZwpTextInputManagerV3?.Dispose();
             ZwpPointerGestures?.Dispose();
             WlDataDeviceManager.Dispose();
@@ -149,8 +148,8 @@ namespace Avalonia.Wayland
             WlScreens.Dispose();
             WlSeat.Dispose();
             WlShm.Dispose();
-            XdgActivation.Dispose();
-            XdgWmBase.Dispose();
+            // XdgActivation.Dispose();
+            WlShell.Dispose();
             WlCompositor.Dispose();
             WlRegistryHandler.Dispose();
             WlDisplay.Dispose();

@@ -30,7 +30,7 @@ namespace Avalonia.Wayland
             var platformRenderInterface = AvaloniaLocator.Current.GetRequiredService<IPlatformRenderInterface>();
             using var cpuContext = platformRenderInterface.CreateBackendContext(null);
             using var renderTarget = cpuContext.CreateRenderTarget(new[] { this });
-            using var ctx = renderTarget.CreateDrawingContext();
+            using var ctx = renderTarget.CreateDrawingContext(true);
             var r = new Rect(cursor.PixelSize.ToSize(1));
             ctx.DrawBitmap(cursor, 1, r, r);
             _wlCursorImage = new WlCursorImage(_wlBuffer, cursor.PixelSize, hotspot, TimeSpan.Zero);

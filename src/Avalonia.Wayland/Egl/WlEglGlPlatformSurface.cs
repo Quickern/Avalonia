@@ -18,7 +18,11 @@ namespace Avalonia.Wayland.Egl
         {
             var eglContext = (EglContext)context;
             if (_info.Handle == IntPtr.Zero)
+            {
                 _info.Handle = LibWaylandEgl.wl_egl_window_create(_info.WlWindow.WlSurface.Handle, _info.Size.Width, _info.Size.Height);
+                Console.WriteLine($"Bla {_info.Handle}: {_info.WlWindow.WlSurface.Handle} {_info.Size.Width}x{_info.Size.Height}");
+            }
+
             var glSurface = eglContext.Display.CreateWindowSurface(_info.Handle);
             return new RenderTarget(glSurface, eglContext, _info);
         }
