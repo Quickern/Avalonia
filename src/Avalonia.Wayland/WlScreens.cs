@@ -101,6 +101,8 @@ namespace Avalonia.Wayland
             public void OnScale(WlOutput eventSender, int factor)
             {
                 _scaling = factor;
+                
+                Console.WriteLine($"Gotoutput: {factor}");
             }
 
             public void OnName(WlOutput eventSender, string name) { }

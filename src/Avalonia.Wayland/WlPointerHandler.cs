@@ -221,16 +221,16 @@ namespace Avalonia.Wayland
 
         public void SetCursor(WlCursor? wlCursor)
         {
-            wlCursor ??= _cursorFactory.GetCursor(StandardCursorType.Arrow) as WlCursor;
-            if (wlCursor is null || wlCursor.ImageCount <= 0  || _currentCursor == wlCursor)
-                return;
-            _pointerTimer?.Dispose();
-            _currentCursor = wlCursor;
-            _currentCursorImageIndex = -1;
-            if (wlCursor.ImageCount == 1)
-                SetCursorImage(wlCursor[0]);
-            else
-                _pointerTimer = DispatcherTimer.Run(OnCursorAnimation, wlCursor[0].Delay);
+            // wlCursor ??= _cursorFactory.GetCursor(StandardCursorType.Arrow) as WlCursor;
+            // if (wlCursor is null || wlCursor.ImageCount <= 0  || _currentCursor == wlCursor)
+            //     return;
+            // _pointerTimer?.Dispose();
+            // _currentCursor = wlCursor;
+            // _currentCursorImageIndex = -1;
+            // if (wlCursor.ImageCount == 1)
+            //     SetCursorImage(wlCursor[0]);
+            // else
+            //     _pointerTimer = DispatcherTimer.Run(OnCursorAnimation, wlCursor[0].Delay);
         }
 
         public void Dispose()

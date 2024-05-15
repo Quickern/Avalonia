@@ -101,7 +101,7 @@ namespace Avalonia.Wayland
             //     _exportedToplevel.Events = this;
             // }
             //
-            this.SetMinMaxSize(_minSize.ToSize(1), _maxSize.ToSize(1));
+            SetMinMaxSize(_minSize.ToSize(1), _maxSize.ToSize(1));
 
             base.Show(activate, isDialog);
         }

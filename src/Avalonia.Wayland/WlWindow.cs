@@ -56,15 +56,14 @@ namespace Avalonia.Wayland
             {
                 _wpViewport = platform.WpViewporter.GetViewport(WlSurface);
                 _wpFractionalScale = platform.WpFractionalScaleManager.GetFractionalScale(WlSurface);
-                _wpFractionalScale.Events = this;
+                
+                if (_wpFractionalScale is not null)
+                    _wpFractionalScale.Events = this;
             }
 
             var surfaces = new List<object>(2);
 
             var platformGraphics = AvaloniaLocator.Current.GetService<IPlatformGraphics>();
-            
-            Console.WriteLine($"platformGr: {platformGraphics?.GetType().FullName ?? "[null]"}");
-            
             if (platformGraphics is EglPlatformGraphics)
             {
                 var surfaceInfo = new WlEglSurfaceInfo(this);
@@ -311,11 +310,6 @@ namespace Avalonia.Wayland
 
         public void OnConfigure(WlShellSurface eventSender, WlShellSurface.ResizeEnum edges, int width, int height)
         {
-            Console.WriteLine($"[{GetType().Name}] OnConfigure: {edges} => {width}x{height}");
-            
-            // if (AppliedState.ConfigureSerial == serial)
-            //     return;
-
             PendingState.WindowState = WindowState.FullScreen;
 
             var size = new PixelSize(width, height);
